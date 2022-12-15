@@ -1,6 +1,6 @@
 # libjson
 
-A small and memory efficient library for working with JSON in C.
+Small and memory efficient library for working with JSON in C.
 
 ## API
 
