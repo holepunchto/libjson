@@ -48,12 +48,12 @@ struct json_array_s {
   json_type_t type;
   int refs;
   size_t len;
-  json_t values[];
+  json_t *values[];
 };
 
 struct json_property_s {
-  json_t key;
-  json_t value;
+  json_t *key;
+  json_t *value;
 };
 
 struct json_object_s {
@@ -64,33 +64,33 @@ struct json_object_s {
 };
 
 json_type_t
-json_typeof (json_t value) {
+json_typeof (const json_t *value) {
   return value->type;
 }
 
 extern bool
-json_is_null (const json_t value);
+json_is_null (const json_t *value);
 
 extern bool
-json_is_true (const json_t value);
+json_is_true (const json_t *value);
 
 extern bool
-json_is_false (const json_t value);
+json_is_false (const json_t *value);
 
 extern bool
-json_is_boolean (const json_t value);
+json_is_boolean (const json_t *value);
 
 extern bool
-json_is_number (const json_t value);
+json_is_number (const json_t *value);
 
 extern bool
-json_is_string (const json_t value);
+json_is_string (const json_t *value);
 
 extern bool
-json_is_array (const json_t value);
+json_is_array (const json_t *value);
 
 extern bool
-json_is_object (const json_t value);
+json_is_object (const json_t *value);
 
 void
 json_free_array (json_array_t *array) {
@@ -110,7 +110,7 @@ json_free_object (json_object_t *object) {
 }
 
 void
-json_free (json_t value) {
+json_free (json_t *value) {
   switch (value->type) {
   case json_null:
   case json_true:
@@ -132,7 +132,7 @@ json_free (json_t value) {
 }
 
 int
-json_ref (json_t value) {
+json_ref (json_t *value) {
   switch (value->type) {
   case json_null:
   case json_true:
@@ -166,7 +166,7 @@ json_ref (json_t value) {
 }
 
 int
-json_deref (json_t value) {
+json_deref (json_t *value) {
   int *refsp = NULL;
 
   switch (value->type) {
@@ -204,8 +204,8 @@ static const json_null_t json__null = {
 };
 
 int
-json_create_null (json_t *result) {
-  *result = (json_t) &json__null;
+json_create_null (json_t **result) {
+  *result = (json_t *) &json__null;
 
   return 0;
 }
@@ -219,20 +219,20 @@ static const json_false_t json__false = {
 };
 
 int
-json_create_boolean (bool value, json_t *result) {
-  *result = value ? (json_t) &json__true : (json_t) &json__false;
+json_create_boolean (bool value, json_t **result) {
+  *result = value ? (json_t *) &json__true : (json_t *) &json__false;
 
   return 0;
 }
 
 bool
-json_boolean_value (const json_t boolean) {
+json_boolean_value (const json_t *boolean) {
   assert(boolean->type == json_true || boolean->type == json_false);
   return boolean->type == json_true;
 }
 
 int
-json_create_number (double value, json_t *result) {
+json_create_number (double value, json_t **result) {
   json_number_t *number = malloc(sizeof(json_number_t));
 
   if (number == NULL) return -1;
@@ -241,18 +241,18 @@ json_create_number (double value, json_t *result) {
   number->refs = 1;
   number->value = value;
 
-  *result = (json_t) number;
+  *result = (json_t *) number;
 
   return 0;
 }
 
 double
-json_number_value (const json_t number) {
+json_number_value (const json_t *number) {
   return json_to(json_number, number)->value;
 }
 
 int
-json_create_string (const char *value, json_t *result) {
+json_create_string (const char *value, json_t **result) {
   json_string_t *str = malloc(sizeof(json_string_t) + strlen(value) + 1);
 
   if (str == NULL) return -1;
@@ -262,19 +262,19 @@ json_create_string (const char *value, json_t *result) {
 
   strcpy(str->value, value);
 
-  *result = (json_t) str;
+  *result = (json_t *) str;
 
   return 0;
 }
 
 const char *
-json_string_value (const json_t string) {
+json_string_value (const json_t *string) {
   return json_to(json_string, string)->value;
 }
 
 int
-json_create_array (size_t len, json_t *result) {
-  json_array_t *arr = malloc(sizeof(json_array_t) + len * sizeof(json_t));
+json_create_array (size_t len, json_t **result) {
+  json_array_t *arr = malloc(sizeof(json_array_t) + len * sizeof(json_t *));
 
   if (arr == NULL) return -1;
 
@@ -283,21 +283,21 @@ json_create_array (size_t len, json_t *result) {
   arr->len = len;
 
   for (size_t i = 0, n = arr->len; i < n; i++) {
-    arr->values[i] = (json_t) &json__null;
+    arr->values[i] = (json_t *) &json__null;
   }
 
-  *result = (json_t) arr;
+  *result = (json_t *) arr;
 
   return 0;
 }
 
 size_t
-json_array_size (const json_t array) {
+json_array_size (const json_t *array) {
   return json_to(json_array, array)->len;
 }
 
-json_t
-json_array_get (const json_t array, size_t index) {
+json_t *
+json_array_get (const json_t *array, size_t index) {
   json_array_t *arr = json_to(json_array, array);
 
   if (index >= arr->len) return NULL;
@@ -306,7 +306,7 @@ json_array_get (const json_t array, size_t index) {
 }
 
 int
-json_array_set (const json_t array, size_t index, json_t value) {
+json_array_set (json_t *array, size_t index, json_t *value) {
   json_array_t *arr = json_to(json_array, array);
 
   if (index >= arr->len) return -1;
@@ -319,14 +319,14 @@ json_array_set (const json_t array, size_t index, json_t value) {
 }
 
 int
-json_array_delete (const json_t array, size_t index) {
+json_array_delete (json_t *array, size_t index) {
   json_array_t *arr = json_to(json_array, array);
 
   if (index >= arr->len) return -1;
 
-  json_t value = arr->values[index];
+  json_t *value = arr->values[index];
 
-  arr->values[index] = (json_t) &json__null;
+  arr->values[index] = (json_t *) &json__null;
 
   json_deref(value);
 
@@ -334,7 +334,7 @@ json_array_delete (const json_t array, size_t index) {
 }
 
 int
-json_create_object (size_t len, json_t *result) {
+json_create_object (size_t len, json_t **result) {
   json_object_t *obj = malloc(sizeof(json_object_t) + len * sizeof(json_property_t));
 
   if (obj == NULL) return -1;
@@ -345,32 +345,32 @@ json_create_object (size_t len, json_t *result) {
 
   for (size_t i = 0, n = obj->len; i < n; i++) {
     obj->properties[i] = (json_property_t){
-      .key = (json_t) &json__null,
-      .value = (json_t) &json__null,
+      .key = (json_t *) &json__null,
+      .value = (json_t *) &json__null,
     };
   }
 
-  *result = (json_t) obj;
+  *result = (json_t *) obj;
 
   return 0;
 }
 
 size_t
-json_object_size (const json_t object) {
+json_object_size (const json_t *object) {
   return json_to(json_object, object)->len;
 }
 
-json_t
-json_object_get (json_t object, const json_t key) {
+json_t *
+json_object_get (const json_t *object, const json_t *key) {
   return NULL;
 }
 
 int
-json_object_set (json_t object, json_t key, json_t value) {
+json_object_set (json_t *object, json_t *key, json_t *value) {
   return -1;
 }
 
 int
-json_object_delete (json_t object, json_t key) {
+json_object_delete (json_t *object, json_t *key) {
   return -1;
 }
