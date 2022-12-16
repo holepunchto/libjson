@@ -20,6 +20,13 @@ struct json_s {
   json_type_t type;
 };
 
+struct json_scope_s {
+  json_scope_t *parent;
+  size_t len;
+  size_t capacity;
+  json_t **values;
+};
+
 struct json_null_s {
   json_type_t type;
 };
@@ -199,6 +206,56 @@ json_deref (json_t *value) {
   return refs;
 }
 
+static json_scope_t *json__scope = NULL;
+
+int
+json_open_scope (json_scope_t **result) {
+  json_scope_t *scope = malloc(sizeof(json_scope_t));
+
+  if (scope == NULL) return -1;
+
+  scope->parent = json__scope;
+  scope->len = 0;
+  scope->capacity = 0;
+  scope->values = NULL;
+
+  *result = json__scope = scope;
+
+  return 0;
+}
+
+int
+json_close_scope (json_scope_t *scope) {
+  assert(json__scope == scope);
+
+  for (size_t i = 0, n = scope->len; i < n; i++) {
+    json_deref(scope->values[i]);
+  }
+
+  json__scope = scope->parent;
+
+  free(scope->values);
+  free(scope);
+
+  return 0;
+}
+
+static inline void
+json_attach_to_scope (json_t *value) {
+  json_scope_t *scope = json__scope;
+
+  if (scope == NULL) return;
+
+  if (scope->len >= scope->capacity) {
+    if (scope->capacity) scope->capacity *= 2;
+    else scope->capacity = 4;
+
+    scope->values = realloc(scope->values, sizeof(json_t *) * scope->capacity);
+  }
+
+  scope->values[scope->len++] = value;
+}
+
 static const json_null_t json__null = {
   .type = json_null,
 };
@@ -241,7 +298,7 @@ json_create_number (double value, json_t **result) {
   number->refs = 1;
   number->value = value;
 
-  *result = (json_t *) number;
+  json_attach_to_scope(*result = (json_t *) number);
 
   return 0;
 }
@@ -262,7 +319,7 @@ json_create_string (const char *value, json_t **result) {
 
   strcpy(str->value, value);
 
-  *result = (json_t *) str;
+  json_attach_to_scope(*result = (json_t *) str);
 
   return 0;
 }
@@ -286,7 +343,7 @@ json_create_array (size_t len, json_t **result) {
     arr->values[i] = (json_t *) &json__null;
   }
 
-  *result = (json_t *) arr;
+  json_attach_to_scope(*result = (json_t *) arr);
 
   return 0;
 }
@@ -350,7 +407,7 @@ json_create_object (size_t len, json_t **result) {
     };
   }
 
-  *result = (json_t *) obj;
+  json_attach_to_scope(*result = (json_t *) obj);
 
   return 0;
 }

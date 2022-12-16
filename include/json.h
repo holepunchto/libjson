@@ -19,6 +19,7 @@ typedef enum {
 } json_type_t;
 
 typedef struct json_s json_t;
+typedef struct json_scope_s json_scope_t;
 
 json_type_t
 json_typeof (const json_t *value);
@@ -68,6 +69,12 @@ json_ref (json_t *value);
 
 int
 json_deref (json_t *value);
+
+int
+json_open_scope (json_scope_t **result);
+
+int
+json_close_scope (json_scope_t *scope);
 
 int
 json_create_null (json_t **result);
