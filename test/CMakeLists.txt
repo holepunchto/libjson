@@ -7,18 +7,18 @@ foreach(test IN LISTS tests)
   target_link_libraries(
     ${test}
     PRIVATE
-      json_shared
-  )
-
-  target_include_directories(
-    ${test}
-    PRIVATE
-      $<TARGET_PROPERTY:json,INCLUDE_DIRECTORIES>
+      json_static
   )
 
   add_test(
     NAME ${test}
     COMMAND ${test}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+  )
+
+  set_tests_properties(
+    ${test}
+    PROPERTIES
+    TIMEOUT 30000
   )
 endforeach()
