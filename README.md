@@ -8,4 +8,4 @@ See [`include/json.h`](include/json.h) for the public API.
 
 ## License
 
-ISC
+Apache-2.0
