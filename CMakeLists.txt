@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.25)
 
 project(json C)
 
@@ -40,6 +40,7 @@ set_target_properties(
   json_static
   PROPERTIES
   OUTPUT_NAME json
+  PREFIX lib
 )
 
 install(TARGETS json_shared json_static)
