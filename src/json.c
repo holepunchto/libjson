@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
@@ -15,6 +16,8 @@ typedef struct json_string_s json_string_t;
 typedef struct json_array_s json_array_t;
 typedef struct json_property_s json_property_t;
 typedef struct json_object_s json_object_t;
+typedef struct json_char_buf_s json_char_buf_t;
+typedef struct json_wchar_buf_s json_wchar_buf_t;
 
 struct json_s {
   json_type_t type;
@@ -72,6 +75,18 @@ struct json_object_s {
   int refs;
   size_t len;
   json_property_t properties[];
+};
+
+struct json_char_buf_s {
+  char *value;
+  size_t len;
+  size_t capacity;
+};
+
+struct json_wchar_buf_s {
+  wchar_t *value;
+  size_t len;
+  size_t capacity;
 };
 
 json_type_t
@@ -637,8 +652,178 @@ json_object_delete (json_t *object, const json_t *key) {
   return -1;
 }
 
+static inline int
+json__char_buf_ensure_capacity (json_char_buf_t *buf, size_t len) {
+  if (buf->len + len <= buf->capacity) return 0;
+
+  while (buf->len + len > buf->capacity) {
+    if (buf->capacity) buf->capacity *= 2;
+    else buf->capacity = 16;
+  }
+
+  char *value = realloc(buf->value, (buf->capacity + 1) * sizeof(char));
+
+  if (value == NULL) return -1;
+
+  buf->value = value;
+
+  return 0;
+}
+
+static inline int
+json__char_buf_append (json_char_buf_t *buf, char *value, size_t len) {
+  int err;
+
+  if (len == (size_t) -1) len = strlen(value);
+
+  err = json__char_buf_ensure_capacity(buf, len);
+  if (err < 0) return err;
+
+  memcpy(&buf->value[buf->len], value, len);
+
+  buf->value[buf->len += len] = '\0';
+
+  return 0;
+}
+
+static inline int
+json__encode_utf8 (const json_t *value, json_char_buf_t *buf);
+
+static inline int
+json__encode_utf8_null (json_char_buf_t *buf) {
+  return json__char_buf_append(buf, "null", 4);
+}
+
+static inline int
+json__encode_utf8_boolean (const json_boolean_t *boolean, json_char_buf_t *buf) {
+  return json__char_buf_append(buf, boolean->value ? "true" : "false", boolean->value ? 4 : 5);
+}
+
+static inline int
+json__encode_utf8_number (const json_number_t *number, json_char_buf_t *buf) {
+  return -1;
+}
+
+static inline int
+json__encode_utf8_string (const json_string_t *string, json_char_buf_t *buf) {
+  return -1;
+}
+
+static inline int
+json__encode_utf8_array (const json_array_t *array, json_char_buf_t *buf) {
+  int err;
+
+  err = json__char_buf_append(buf, "[", 1);
+  if (err < 0) return err;
+
+  bool first = true;
+
+  for (size_t i = 0, n = array->len; i < n; i++) {
+    if (first) first = false;
+    else {
+      err = json__char_buf_append(buf, ",", 1);
+      if (err < 0) return err;
+    }
+
+    err = json__encode_utf8(array->values[i], buf);
+    if (err < 0) return err;
+  }
+
+  err = json__char_buf_append(buf, "]", 1);
+  if (err < 0) return err;
+
+  return 0;
+}
+
+static inline int
+json__encode_utf8_property (const json_property_t *property, json_char_buf_t *buf) {
+  int err;
+
+  err = json__encode_utf8_string(json_to(string, property->key), buf);
+  if (err < 0) return err;
+
+  err = json__char_buf_append(buf, ":", 1);
+  if (err < 0) return err;
+
+  err = json__encode_utf8(property->value, buf);
+  if (err < 0) return err;
+
+  return 0;
+}
+
+static inline int
+json__encode_utf8_object (const json_object_t *object, json_char_buf_t *buf) {
+  int err;
+
+  err = json__char_buf_append(buf, "{", 1);
+  if (err < 0) return err;
+
+  bool first = true;
+
+  for (size_t i = 0, n = object->len; i < n; i++) {
+    const json_property_t *property = &object->properties[i];
+
+    if (property->key->type == json_null) continue;
+
+    if (first) first = false;
+    else {
+      err = json__char_buf_append(buf, ",", 1);
+      if (err < 0) return err;
+    }
+
+    err = json__encode_utf8_property(property, buf);
+    if (err < 0) return err;
+  }
+
+  err = json__char_buf_append(buf, "}", 1);
+  if (err < 0) return err;
+
+  return 0;
+}
+
+static inline int
+json__encode_utf8 (const json_t *value, json_char_buf_t *buf) {
+  switch (value->type) {
+  case json_null:
+    return json__encode_utf8_null(buf);
+
+  case json_boolean:
+    return json__encode_utf8_boolean(json_to(boolean, value), buf);
+
+  case json_number:
+    return json__encode_utf8_number(json_to(number, value), buf);
+
+  case json_string:
+    return json__encode_utf8_string(json_to(string, value), buf);
+
+  case json_array:
+    return json__encode_utf8_array(json_to(array, value), buf);
+
+  case json_object:
+    return json__encode_utf8_object(json_to(object, value), buf);
+  }
+}
+
 int
 json_encode_utf8 (const json_t *value, char **result) {
+  int err;
+
+  json_char_buf_t buf = {
+    .value = NULL,
+    .len = 0,
+    .capacity = 0,
+  };
+
+  err = json__encode_utf8(value, &buf);
+  if (err < 0) goto err;
+
+  *result = realloc(buf.value, (buf.len + 1) * sizeof(char));
+
+  return 0;
+
+err:
+  free(buf.value);
+
   return -1;
 }
 
