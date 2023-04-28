@@ -1,12 +1,12 @@
 #ifndef JSON_H
 #define JSON_H
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <stdbool.h>
+#include <stddef.h>
 
 typedef enum {
   json_null,
@@ -63,6 +63,12 @@ inline bool
 json_is_object (const json_t *value) {
   return json_typeof(value) == json_object;
 }
+
+bool
+json_equal (const json_t *a, const json_t *b);
+
+int
+json_compare (const json_t *a, const json_t *b);
 
 int
 json_ref (json_t *value);
@@ -126,6 +132,12 @@ json_object_set (json_t *object, json_t *key, json_t *value);
 
 int
 json_object_delete (json_t *object, json_t *key);
+
+int
+json_encode (const json_t *value, char **result);
+
+int
+json_decode (const char *buffer, size_t len, json_t **result);
 
 #ifdef __cplusplus
 }

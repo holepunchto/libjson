@@ -5,7 +5,7 @@
 
 #include "../include/json.h"
 
-#define json_to(t, value) (assert(value->type == t), (t##_t *) value)
+#define json_to(t, value) (assert(value->type == json_##t), (json_##t##_t *) value)
 
 typedef struct json_null_s json_null_t;
 typedef struct json_true_s json_true_t;
@@ -99,15 +99,108 @@ json_is_array (const json_t *value);
 extern bool
 json_is_object (const json_t *value);
 
-void
-json_free_array (json_array_t *array) {
+static inline bool
+json__equal_number (const json_number_t *a, const json_number_t *b) {
+  return a->value == b->value;
+}
+
+static inline bool
+json__equal_string (const json_string_t *a, const json_string_t *b) {
+  return strcmp(a->value, b->value) == 0;
+}
+
+static inline bool
+json__equal_array (const json_array_t *a, const json_array_t *b) {
+  return true;
+}
+
+static inline bool
+json__equal_object (const json_object_t *a, const json_object_t *b) {
+  return true;
+}
+
+bool
+json_equal (const json_t *a, const json_t *b) {
+  if (a->type != b->type) return false;
+
+  return false;
+  switch (a->type) {
+  case json_null:
+  case json_true:
+  case json_false:
+    return true;
+
+  case json_number:
+    return json__equal_number(json_to(number, a), json_to(number, b));
+
+  case json_string:
+    return json__equal_string(json_to(string, a), json_to(string, b));
+
+  case json_array:
+    return json__equal_array(json_to(array, a), json_to(array, b));
+
+  case json_object:
+    return json__equal_object(json_to(object, a), json_to(object, b));
+  }
+}
+
+static inline bool
+json__compare_number (const json_number_t *a, const json_number_t *b) {
+  return a->value < b->value ? -1 : a->value > b->value ? 1
+                                                        : 0;
+}
+
+static inline bool
+json__compare_string (const json_string_t *a, const json_string_t *b) {
+  return strcmp(a->value, b->value);
+}
+
+static inline bool
+json__compare_array (const json_array_t *a, const json_array_t *b) {
+  return 0;
+}
+
+static inline bool
+json__compare_object (const json_object_t *a, const json_object_t *b) {
+  return 0;
+}
+
+int
+json_compare (const json_t *a, const json_t *b) {
+  if (a->type != b->type) {
+    return a->type < b->type ? -1 : a->type > b->type ? 1
+                                                      : 0;
+  }
+
+  switch (a->type) {
+  case json_null:
+  case json_true:
+  case json_false:
+    return 0;
+
+  case json_number:
+    return json__compare_number(json_to(number, a), json_to(number, b));
+
+  case json_string:
+    return json__compare_string(json_to(string, a), json_to(string, b));
+
+  case json_array:
+    return json__compare_array(json_to(array, a), json_to(array, b));
+
+  case json_object:
+    return json__compare_object(json_to(object, a), json_to(object, b));
+  }
+}
+
+static inline void
+json__free_array (json_array_t *array) {
   for (size_t i = 0, n = array->len; i < n; i++) {
     json_deref(array->values[i]);
   }
 }
 
-void
-json_free_object (json_object_t *object) {
+static inline void
+json__free_object (json_object_t *object) {
   for (size_t i = 0, n = object->len; i < n; i++) {
     json_property_t *property = &object->properties[i];
 
@@ -116,8 +209,8 @@ json_free_object (json_object_t *object) {
   }
 }
 
-void
-json_free (json_t *value) {
+static inline void
+json__free (json_t *value) {
   switch (value->type) {
   case json_null:
   case json_true:
@@ -127,11 +220,11 @@ json_free (json_t *value) {
     break;
 
   case json_array:
-    json_free_array(json_to(json_array, value));
+    json__free_array(json_to(array, value));
     break;
 
   case json_object:
-    json_free_object(json_to(json_object, value));
+    json__free_object(json_to(object, value));
     break;
   }
 
@@ -146,29 +239,17 @@ json_ref (json_t *value) {
   case json_false:
     return 1; // Always has a singleton reference
 
-  case json_number: {
-    json_number_t *number = json_to(json_number, value);
+  case json_number:
+    return ++json_to(number, value)->refs;
 
-    return ++number->refs;
-  }
+  case json_string:
+    return ++json_to(string, value)->refs;
 
-  case json_string: {
-    json_string_t *string = json_to(json_string, value);
+  case json_array:
+    return ++json_to(array, value)->refs;
 
-    return ++string->refs;
-  }
-
-  case json_array: {
-    json_array_t *array = json_to(json_array, value);
-
-    return ++array->refs;
-  }
-
-  case json_object: {
-    json_object_t *object = json_to(json_object, value);
-
-    return ++object->refs;
-  }
+  case json_object:
+    return ++json_to(object, value)->refs;
   }
 }
 
@@ -183,25 +264,25 @@ json_deref (json_t *value) {
     return 1; // Always has a singleton reference
 
   case json_number:
-    refsp = &json_to(json_number, value)->refs;
+    refsp = &json_to(number, value)->refs;
     break;
 
   case json_string:
-    refsp = &json_to(json_string, value)->refs;
+    refsp = &json_to(string, value)->refs;
     break;
 
   case json_array:
-    refsp = &json_to(json_array, value)->refs;
+    refsp = &json_to(array, value)->refs;
     break;
 
   case json_object:
-    refsp = &json_to(json_object, value)->refs;
+    refsp = &json_to(object, value)->refs;
     break;
   }
 
   int refs = *refsp;
   if (refs >= 1) *refsp = --refs;
-  if (refs == 0) json_free(value);
+  if (refs == 0) json__free(value);
 
   return refs;
 }
@@ -241,7 +322,7 @@ json_close_scope (json_scope_t *scope) {
 }
 
 static inline void
-json_attach_to_scope (json_t *value) {
+json__attach_to_scope (json_t *value) {
   json_scope_t *scope = json__scope;
 
   if (scope == NULL) return;
@@ -298,14 +379,14 @@ json_create_number (double value, json_t **result) {
   number->refs = 1;
   number->value = value;
 
-  json_attach_to_scope(*result = (json_t *) number);
+  json__attach_to_scope(*result = (json_t *) number);
 
   return 0;
 }
 
 double
 json_number_value (const json_t *number) {
-  return json_to(json_number, number)->value;
+  return json_to(number, number)->value;
 }
 
 int
@@ -319,14 +400,14 @@ json_create_string (const char *value, json_t **result) {
 
   strcpy(str->value, value);
 
-  json_attach_to_scope(*result = (json_t *) str);
+  json__attach_to_scope(*result = (json_t *) str);
 
   return 0;
 }
 
 const char *
 json_string_value (const json_t *string) {
-  return json_to(json_string, string)->value;
+  return json_to(string, string)->value;
 }
 
 int
@@ -343,19 +424,19 @@ json_create_array (size_t len, json_t **result) {
     arr->values[i] = (json_t *) &json__null;
   }
 
-  json_attach_to_scope(*result = (json_t *) arr);
+  json__attach_to_scope(*result = (json_t *) arr);
 
   return 0;
 }
 
 size_t
 json_array_size (const json_t *array) {
-  return json_to(json_array, array)->len;
+  return json_to(array, array)->len;
 }
 
 json_t *
 json_array_get (const json_t *array, size_t index) {
-  json_array_t *arr = json_to(json_array, array);
+  json_array_t *arr = json_to(array, array);
 
   if (index >= arr->len) return NULL;
 
@@ -364,7 +445,7 @@ json_array_get (const json_t *array, size_t index) {
 
 int
 json_array_set (json_t *array, size_t index, json_t *value) {
-  json_array_t *arr = json_to(json_array, array);
+  json_array_t *arr = json_to(array, array);
 
   if (index >= arr->len) return -1;
 
@@ -377,7 +458,7 @@ json_array_set (json_t *array, size_t index, json_t *value) {
 
 int
 json_array_delete (json_t *array, size_t index) {
-  json_array_t *arr = json_to(json_array, array);
+  json_array_t *arr = json_to(array, array);
 
   if (index >= arr->len) return -1;
 
@@ -407,14 +488,14 @@ json_create_object (size_t len, json_t **result) {
     };
   }
 
-  json_attach_to_scope(*result = (json_t *) obj);
+  json__attach_to_scope(*result = (json_t *) obj);
 
   return 0;
 }
 
 size_t
 json_object_size (const json_t *object) {
-  return json_to(json_object, object)->len;
+  return json_to(object, object)->len;
 }
 
 json_t *
@@ -429,5 +510,15 @@ json_object_set (json_t *object, json_t *key, json_t *value) {
 
 int
 json_object_delete (json_t *object, json_t *key) {
+  return -1;
+}
+
+int
+json_encode (const json_t *value, char **result) {
+  return -1;
+}
+
+int
+json_decode (const char *buffer, size_t len, json_t **result) {
   return -1;
 }
