@@ -8,8 +8,7 @@
 #define json_to(t, value) (assert(value->type == json_##t), (json_##t##_t *) value)
 
 typedef struct json_null_s json_null_t;
-typedef struct json_true_s json_true_t;
-typedef struct json_false_s json_false_t;
+typedef struct json_boolean_s json_boolean_t;
 typedef struct json_number_s json_number_t;
 typedef struct json_string_s json_string_t;
 typedef struct json_array_s json_array_t;
@@ -31,12 +30,9 @@ struct json_null_s {
   json_type_t type;
 };
 
-struct json_true_s {
+struct json_boolean_s {
   json_type_t type;
-};
-
-struct json_false_s {
-  json_type_t type;
+  const bool value;
 };
 
 struct json_number_s {
@@ -79,12 +75,6 @@ extern bool
 json_is_null (const json_t *value);
 
 extern bool
-json_is_true (const json_t *value);
-
-extern bool
-json_is_false (const json_t *value);
-
-extern bool
 json_is_boolean (const json_t *value);
 
 extern bool
@@ -98,6 +88,11 @@ json_is_array (const json_t *value);
 
 extern bool
 json_is_object (const json_t *value);
+
+static inline bool
+json__equal_boolean (const json_boolean_t *a, const json_boolean_t *b) {
+  return a->value == b->value;
+}
 
 static inline bool
 json__equal_number (const json_number_t *a, const json_number_t *b) {
@@ -126,9 +121,10 @@ json_equal (const json_t *a, const json_t *b) {
   return false;
   switch (a->type) {
   case json_null:
-  case json_true:
-  case json_false:
     return true;
+
+  case json_boolean:
+    return json__equal_boolean(json_to(boolean, a), json_to(boolean, b));
 
   case json_number:
     return json__equal_number(json_to(number, a), json_to(number, b));
@@ -142,6 +138,12 @@ json_equal (const json_t *a, const json_t *b) {
   case json_object:
     return json__equal_object(json_to(object, a), json_to(object, b));
   }
+}
+
+static inline bool
+json__compare_boolean (const json_boolean_t *a, const json_boolean_t *b) {
+  return a->value < b->value ? -1 : a->value > b->value ? 1
+                                                        : 0;
 }
 
 static inline bool
@@ -174,9 +176,10 @@ json_compare (const json_t *a, const json_t *b) {
 
   switch (a->type) {
   case json_null:
-  case json_true:
-  case json_false:
     return 0;
+
+  case json_boolean:
+    return json__compare_boolean(json_to(boolean, a), json_to(boolean, b));
 
   case json_number:
     return json__compare_number(json_to(number, a), json_to(number, b));
@@ -213,8 +216,7 @@ static inline void
 json__free (json_t *value) {
   switch (value->type) {
   case json_null:
-  case json_true:
-  case json_false:
+  case json_boolean:
   case json_number:
   case json_string:
     break;
@@ -235,8 +237,7 @@ int
 json_ref (json_t *value) {
   switch (value->type) {
   case json_null:
-  case json_true:
-  case json_false:
+  case json_boolean:
     return 1; // Always has a singleton reference
 
   case json_number:
@@ -259,8 +260,7 @@ json_deref (json_t *value) {
 
   switch (value->type) {
   case json_null:
-  case json_true:
-  case json_false:
+  case json_boolean:
     return 1; // Always has a singleton reference
 
   case json_number:
@@ -348,12 +348,14 @@ json_create_null (json_t **result) {
   return 0;
 }
 
-static const json_true_t json__true = {
-  .type = json_true,
+static const json_boolean_t json__true = {
+  .type = json_boolean,
+  .value = true,
 };
 
-static const json_false_t json__false = {
-  .type = json_false,
+static const json_boolean_t json__false = {
+  .type = json_boolean,
+  .value = false,
 };
 
 int
@@ -365,8 +367,7 @@ json_create_boolean (bool value, json_t **result) {
 
 bool
 json_boolean_value (const json_t *boolean) {
-  assert(boolean->type == json_true || boolean->type == json_false);
-  return boolean->type == json_true;
+  return json_to(boolean, boolean)->value;
 }
 
 int

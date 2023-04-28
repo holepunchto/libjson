@@ -10,8 +10,7 @@ extern "C" {
 
 typedef enum {
   json_null,
-  json_true,
-  json_false,
+  json_boolean,
   json_number,
   json_string,
   json_array,
@@ -30,18 +29,8 @@ json_is_null (const json_t *value) {
 }
 
 inline bool
-json_is_true (const json_t *value) {
-  return json_typeof(value) == json_true;
-}
-
-inline bool
-json_is_false (const json_t *value) {
-  return json_typeof(value) == json_false;
-}
-
-inline bool
 json_is_boolean (const json_t *value) {
-  return json_is_true(value) || json_is_false(value);
+  return json_typeof(value) == json_boolean;
 }
 
 inline bool
