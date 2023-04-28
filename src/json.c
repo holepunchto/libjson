@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 
 #include "../include/json.h"
 
@@ -44,7 +45,14 @@ struct json_number_s {
 struct json_string_s {
   json_type_t type;
   int refs;
-  char value[];
+  enum {
+    json_string_utf8,
+    json_string_utf16le,
+  } encoding;
+  union {
+    char *utf8;
+    wchar_t *utf16le;
+  } value;
 };
 
 struct json_array_s {
@@ -101,7 +109,15 @@ json__equal_number (const json_number_t *a, const json_number_t *b) {
 
 static inline bool
 json__equal_string (const json_string_t *a, const json_string_t *b) {
-  return strcmp(a->value, b->value) == 0;
+  if (a->encoding != b->encoding) return false;
+
+  switch (a->encoding) {
+  case json_string_utf8:
+    return strcmp(a->value.utf8, b->value.utf8) == 0;
+
+  case json_string_utf16le:
+    return wcscmp(a->value.utf16le, b->value.utf16le) == 0;
+  }
 }
 
 static inline bool
@@ -154,7 +170,18 @@ json__compare_number (const json_number_t *a, const json_number_t *b) {
 
 static inline bool
 json__compare_string (const json_string_t *a, const json_string_t *b) {
-  return strcmp(a->value, b->value);
+  if (a->encoding != b->encoding) {
+    return a->encoding < b->encoding ? -1 : a->encoding > b->encoding ? 1
+                                                                      : 0;
+  }
+
+  switch (a->encoding) {
+  case json_string_utf8:
+    return strcmp(a->value.utf8, b->value.utf8);
+
+  case json_string_utf16le:
+    return wcscmp(a->value.utf16le, b->value.utf16le);
+  }
 }
 
 static inline bool
@@ -392,14 +419,34 @@ json_number_value (const json_t *number) {
 
 int
 json_create_string_utf8 (const char *value, json_t **result) {
-  json_string_t *str = malloc(sizeof(json_string_t) + strlen(value) + 1);
+  json_string_t *str = malloc(sizeof(json_string_t) + strlen(value) + sizeof(char));
 
   if (str == NULL) return -1;
 
   str->type = json_string;
   str->refs = 1;
+  str->encoding = json_string_utf8;
+  str->value.utf8 = (void *) str + sizeof(json_string_t);
 
-  strcpy(str->value, value);
+  strcpy(str->value.utf8, value);
+
+  json__attach_to_scope(*result = (json_t *) str);
+
+  return 0;
+}
+
+int
+json_create_string_utf16le (const wchar_t *value, json_t **result) {
+  json_string_t *str = malloc(sizeof(json_string_t) + wcslen(value) + sizeof(wchar_t));
+
+  if (str == NULL) return -1;
+
+  str->type = json_string;
+  str->refs = 1;
+  str->encoding = json_string_utf16le;
+  str->value.utf8 = (void *) str + sizeof(json_string_t);
+
+  wcscpy(str->value.utf16le, value);
 
   json__attach_to_scope(*result = (json_t *) str);
 
@@ -408,7 +455,12 @@ json_create_string_utf8 (const char *value, json_t **result) {
 
 const char *
 json_string_value_utf8 (const json_t *string) {
-  return json_to(string, string)->value;
+  return json_to(string, string)->value.utf8;
+}
+
+const wchar_t *
+json_string_value_utf16le (const json_t *string) {
+  return json_to(string, string)->value.utf16le;
 }
 
 int
@@ -591,6 +643,16 @@ json_encode_utf8 (const json_t *value, char **result) {
 }
 
 int
+json_encode_utf16le (const json_t *value, wchar_t **result) {
+  return -1;
+}
+
+int
 json_decode_utf8 (const char *buffer, size_t len, json_t **result) {
+  return -1;
+}
+
+int
+json_decode_utf16le (const wchar_t *buffer, size_t len, json_t **result) {
   return -1;
 }

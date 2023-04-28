@@ -89,8 +89,14 @@ json_number_value (const json_t *number);
 int
 json_create_string_utf8 (const char *value, json_t **result);
 
+int
+json_create_string_utf16le (const wchar_t *value, json_t **result);
+
 const char *
 json_string_value_utf8 (const json_t *string);
+
+const wchar_t *
+json_string_value_utf16le (const json_t *string);
 
 int
 json_create_array (size_t len, json_t **result);
@@ -126,7 +132,13 @@ int
 json_encode_utf8 (const json_t *value, char **result);
 
 int
+json_encode_utf16le (const json_t *value, wchar_t **result);
+
+int
 json_decode_utf8 (const char *buffer, size_t len, json_t **result);
+
+int
+json_decode_utf16le (const wchar_t *buffer, size_t len, json_t **result);
 
 #ifdef __cplusplus
 }
