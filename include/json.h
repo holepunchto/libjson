@@ -89,14 +89,18 @@ json_number_value (const json_t *number);
 int
 json_create_string_utf8 (const char *value, json_t **result);
 
+#ifdef _WIN32
 int
 json_create_string_utf16le (const wchar_t *value, json_t **result);
+#endif
 
 const char *
 json_string_value_utf8 (const json_t *string);
 
+#ifdef _WIN32
 const wchar_t *
 json_string_value_utf16le (const json_t *string);
+#endif
 
 int
 json_create_array (size_t len, json_t **result);
@@ -131,14 +135,18 @@ json_object_delete (json_t *object, const json_t *key);
 int
 json_encode_utf8 (const json_t *value, char **result);
 
+#ifdef _WIN32
 int
 json_encode_utf16le (const json_t *value, wchar_t **result);
+#endif
 
 int
 json_decode_utf8 (const char *buffer, size_t len, json_t **result);
 
+#ifdef _WIN32
 int
 json_decode_utf16le (const wchar_t *buffer, size_t len, json_t **result);
+#endif
 
 #ifdef __cplusplus
 }
