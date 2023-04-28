@@ -426,7 +426,7 @@ json_create_string_utf8 (const char *value, json_t **result) {
   str->type = json_string;
   str->refs = 1;
   str->encoding = json_string_utf8;
-  str->value.utf16le = (void *) str + sizeof(json_string_t);
+  str->value.utf8 = (void *) str + sizeof(json_string_t);
 
   strcpy(str->value.utf8, value);
 
@@ -444,7 +444,7 @@ json_create_string_utf16le (const wchar_t *value, json_t **result) {
   str->type = json_string;
   str->refs = 1;
   str->encoding = json_string_utf16le;
-  str->value.utf8 = (void *) str + sizeof(json_string_t);
+  str->value.utf16le = (void *) str + sizeof(json_string_t);
 
   wcscpy(str->value.utf16le, value);
 
