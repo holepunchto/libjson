@@ -131,7 +131,7 @@ int
 json_object_set (json_t *object, json_t *key, json_t *value);
 
 int
-json_object_delete (json_t *object, json_t *key);
+json_object_delete (json_t *object, const json_t *key);
 
 int
 json_encode (const json_t *value, char **result);

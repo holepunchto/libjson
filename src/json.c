@@ -449,9 +449,10 @@ json_array_set (json_t *array, size_t index, json_t *value) {
 
   if (index >= arr->len) return -1;
 
-  arr->values[index] = value;
-
   json_ref(value);
+  json_deref(arr->values[index]);
+
+  arr->values[index] = value;
 
   return 0;
 }
@@ -462,13 +463,35 @@ json_array_delete (json_t *array, size_t index) {
 
   if (index >= arr->len) return -1;
 
-  json_t *value = arr->values[index];
+  json_deref(arr->values[index]);
 
   arr->values[index] = (json_t *) &json__null;
 
-  json_deref(value);
-
   return 0;
+}
+
+static inline bool
+json__property_matches (json_property_t *property, const json_t *key) {
+  return property->key->type != json_null && json__equal_string(json_to(string, property->key), json_to(string, key));
+}
+
+static inline void
+json__property_set (json_property_t *property, json_t *key, json_t *value) {
+  json_ref(key);
+  json_ref(value);
+  json_deref(property->key);
+  json_deref(property->value);
+
+  property->key = key;
+  property->value = value;
+}
+
+static inline void
+json__property_delete (json_property_t *property) {
+  json_deref(property->key);
+  json_deref(property->value);
+
+  property->key = property->value = (json_t *) &json__null;
 }
 
 int
@@ -500,16 +523,64 @@ json_object_size (const json_t *object) {
 
 json_t *
 json_object_get (const json_t *object, const json_t *key) {
+  json_object_t *obj = json_to(object, object);
+
+  assert(key->type == json_string);
+
+  for (size_t i = 0, n = obj->len; i < n; i++) {
+    json_property_t *property = &obj->properties[i];
+
+    if (json__property_matches(property, key)) {
+      return property->value;
+    }
+  }
+
   return NULL;
 }
 
 int
 json_object_set (json_t *object, json_t *key, json_t *value) {
-  return -1;
+  json_object_t *obj = json_to(object, object);
+
+  assert(key->type == json_string);
+
+  json_property_t *available = NULL;
+
+  for (size_t i = 0, n = obj->len; i < n; i++) {
+    json_property_t *property = &obj->properties[i];
+
+    if (property->key->type == json_null) {
+      if (available == NULL) available = property;
+      continue;
+    }
+
+    if (json__property_matches(property, key)) {
+      json__property_set(property, key, value);
+      return 0;
+    }
+  }
+
+  if (available == NULL) return -1;
+
+  json__property_set(available, key, value);
+  return 0;
 }
 
 int
-json_object_delete (json_t *object, json_t *key) {
+json_object_delete (json_t *object, const json_t *key) {
+  json_object_t *obj = json_to(object, object);
+
+  assert(key->type == json_string);
+
+  for (size_t i = 0, n = obj->len; i < n; i++) {
+    json_property_t *property = &obj->properties[i];
+
+    if (json__property_matches(property, key)) {
+      json__property_delete(property);
+      return 0;
+    }
+  }
+
   return -1;
 }
 
