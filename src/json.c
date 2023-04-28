@@ -706,7 +706,56 @@ json__encode_utf8_number (const json_number_t *number, json_char_buf_t *buf) {
 
 static inline int
 json__encode_utf8_string (const json_string_t *string, json_char_buf_t *buf) {
-  return -1;
+  int err;
+
+  assert(string->encoding == json_string_utf8);
+
+  err = json__char_buf_append(buf, "\"", 1);
+  if (err < 0) return err;
+
+  size_t len = strlen(string->value.utf8);
+
+  err = json__char_buf_ensure_capacity(buf, len);
+  if (err < 0) return err;
+
+  char escaped[6];
+
+  for (size_t i = 0; i < len; i++) {
+    char c = string->value.utf8[i];
+
+    if (c >= 32 && c != '\"' && c != '\\') {
+      err = json__char_buf_append(buf, &c, 1);
+      if (err < 0) return err;
+    } else {
+      err = json__char_buf_append(buf, "\\", 1);
+      if (err < 0) return err;
+
+      switch (c) {
+      case '\"':
+      case '\\':
+      case '\b':
+      case '\f':
+      case '\n':
+      case '\r':
+      case '\t':
+        err = json__char_buf_append(buf, &c, 1);
+        if (err < 0) return err;
+        break;
+
+      default:
+        err = snprintf(escaped, 6, "u%04x", c);
+        if (err < 0) return err;
+
+        err = json__char_buf_append(buf, escaped, 5);
+        if (err < 0) return err;
+      }
+    }
+  }
+
+  err = json__char_buf_append(buf, "\"", 1);
+  if (err < 0) return err;
+
+  return 0;
 }
 
 static inline int
