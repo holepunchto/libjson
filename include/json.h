@@ -98,10 +98,10 @@ double
 json_number_value (const json_t *number);
 
 int
-json_create_string (const char *value, json_t **result);
+json_create_string_utf8 (const char *value, json_t **result);
 
 const char *
-json_string_value (const json_t *string);
+json_string_value_utf8 (const json_t *string);
 
 int
 json_create_array (size_t len, json_t **result);
@@ -134,10 +134,10 @@ int
 json_object_delete (json_t *object, const json_t *key);
 
 int
-json_encode (const json_t *value, char **result);
+json_encode_utf8 (const json_t *value, char **result);
 
 int
-json_decode (const char *buffer, size_t len, json_t **result);
+json_decode_utf8 (const char *buffer, size_t len, json_t **result);
 
 #ifdef __cplusplus
 }
