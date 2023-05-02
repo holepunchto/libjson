@@ -448,14 +448,14 @@ json_number_value (const json_t *number) {
 
 int
 json_create_string_utf8 (const char *value, json_t **result) {
-  json_string_t *str = malloc(sizeof(json_string_t) + strlen(value) + sizeof(char));
+  json_string_t *str = malloc(sizeof(json_string_t) + ((strlen(value) + 1) * sizeof(char)));
 
   if (str == NULL) return -1;
 
   str->type = json_string;
   str->refs = 1;
   str->encoding = json_string_utf8;
-  str->value.utf8 = (void *) str + sizeof(json_string_t);
+  str->value.utf8 = ((char *) str) + sizeof(json_string_t);
 
   strcpy(str->value.utf8, value);
 
@@ -467,14 +467,14 @@ json_create_string_utf8 (const char *value, json_t **result) {
 #ifdef _WIN32
 int
 json_create_string_utf16le (const wchar_t *value, json_t **result) {
-  json_string_t *str = malloc(sizeof(json_string_t) + wcslen(value) + sizeof(wchar_t));
+  json_string_t *str = malloc(sizeof(json_string_t) + ((wcslen(value) + 1) * sizeof(wchar_t)));
 
   if (str == NULL) return -1;
 
   str->type = json_string;
   str->refs = 1;
   str->encoding = json_string_utf16le;
-  str->value.utf16le = (void *) str + sizeof(json_string_t);
+  str->value.utf16le = ((wchar_t *) str) + sizeof(json_string_t);
 
   wcscpy(str->value.utf16le, value);
 
