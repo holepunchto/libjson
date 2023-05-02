@@ -394,7 +394,7 @@ json__attach_to_scope (json_t *value) {
     if (scope->capacity) scope->capacity *= 2;
     else scope->capacity = 4;
 
-    json_t** values = realloc(scope->values, sizeof(json_t *) * scope->capacity);
+    json_t **values = realloc(scope->values, sizeof(json_t *) * scope->capacity);
     assert(values);
 
     scope->values = values;
