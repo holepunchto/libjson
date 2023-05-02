@@ -138,6 +138,7 @@ json__equal_string (const json_string_t *a, const json_string_t *b) {
 
   switch (a->encoding) {
   case json_string_utf8:
+  default:
     return strcmp(a->value.utf8, b->value.utf8) == 0;
 
 #ifdef _WIN32
@@ -164,6 +165,7 @@ json_equal (const json_t *a, const json_t *b) {
   return false;
   switch (a->type) {
   case json_null:
+  default:
     return true;
 
   case json_boolean:
@@ -204,6 +206,7 @@ json__compare_string (const json_string_t *a, const json_string_t *b) {
 
   switch (a->encoding) {
   case json_string_utf8:
+  default:
     return strcmp(a->value.utf8, b->value.utf8);
 
 #ifdef _WIN32
@@ -232,6 +235,7 @@ json_compare (const json_t *a, const json_t *b) {
 
   switch (a->type) {
   case json_null:
+  default:
     return 0;
 
   case json_boolean:
@@ -275,6 +279,7 @@ json__free (json_t *value) {
   case json_boolean:
   case json_number:
   case json_string:
+  default:
     break;
 
   case json_array:
@@ -294,6 +299,7 @@ json_ref (json_t *value) {
   switch (value->type) {
   case json_null:
   case json_boolean:
+  default:
     return 1; // Always has a singleton reference
 
   case json_number:
@@ -317,6 +323,7 @@ json_deref (json_t *value) {
   switch (value->type) {
   case json_null:
   case json_boolean:
+  default:
     return 1; // Always has a singleton reference
 
   case json_number:
@@ -387,7 +394,10 @@ json__attach_to_scope (json_t *value) {
     if (scope->capacity) scope->capacity *= 2;
     else scope->capacity = 4;
 
-    scope->values = realloc(scope->values, sizeof(json_t *) * scope->capacity);
+    json_t** values = realloc(scope->values, sizeof(json_t *) * scope->capacity);
+    assert(values);
+
+    scope->values = values;
   }
 
   scope->values[scope->len++] = value;
@@ -452,10 +462,12 @@ json_create_string_utf8 (const char *value, json_t **result) {
 
   if (str == NULL) return -1;
 
+  void *end = ((char *) str) + sizeof(json_string_t);
+
   str->type = json_string;
   str->refs = 1;
   str->encoding = json_string_utf8;
-  str->value.utf8 = ((char *) str) + sizeof(json_string_t);
+  str->value.utf8 = end;
 
   strcpy(str->value.utf8, value);
 
@@ -471,10 +483,12 @@ json_create_string_utf16le (const wchar_t *value, json_t **result) {
 
   if (str == NULL) return -1;
 
+  void *end = ((char *) str) + sizeof(json_string_t);
+
   str->type = json_string;
   str->refs = 1;
   str->encoding = json_string_utf16le;
-  str->value.utf16le = ((wchar_t *) str) + sizeof(json_string_t);
+  str->value.utf16le = end;
 
   wcscpy(str->value.utf16le, value);
 
