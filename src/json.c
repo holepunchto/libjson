@@ -3,9 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef _WIN32
+#include <utf.h>
 #include <wchar.h>
-#endif
 
 #include "../include/json.h"
 
@@ -18,10 +17,8 @@ typedef struct json_string_s json_string_t;
 typedef struct json_array_s json_array_t;
 typedef struct json_property_s json_property_t;
 typedef struct json_object_s json_object_t;
-typedef struct json_char_buf_s json_char_buf_t;
-#ifdef _WIN32
-typedef struct json_wchar_buf_s json_wchar_buf_t;
-#endif
+typedef struct json_utf8_buf_s json_utf8_buf_t;
+typedef struct json_utf16_buf_s json_utf16_buf_t;
 
 struct json_s {
   json_type_t type;
@@ -54,15 +51,11 @@ struct json_string_s {
   int refs;
   enum {
     json_string_utf8,
-#ifdef _WIN32
     json_string_utf16le,
-#endif
   } encoding;
   union {
-    char *utf8;
-#ifdef _WIN32
-    wchar_t *utf16le;
-#endif
+    utf8_t *utf8;
+    utf16_t *utf16le;
   } value;
 };
 
@@ -85,19 +78,17 @@ struct json_object_s {
   json_property_t properties[];
 };
 
-struct json_char_buf_s {
-  char *value;
+struct json_utf8_buf_s {
+  utf8_t *value;
   size_t len;
   size_t capacity;
 };
 
-#ifdef _WIN32
-struct json_wchar_buf_s {
-  wchar_t *value;
+struct json_utf16_buf_s {
+  utf16_t *value;
   size_t len;
   size_t capacity;
 };
-#endif
 
 json_type_t
 json_typeof (const json_t *value) {
@@ -139,12 +130,10 @@ json__equal_string (const json_string_t *a, const json_string_t *b) {
   switch (a->encoding) {
   case json_string_utf8:
   default:
-    return strcmp(a->value.utf8, b->value.utf8) == 0;
+    return strcmp((char *) a->value.utf8, (char *) b->value.utf8) == 0;
 
-#ifdef _WIN32
   case json_string_utf16le:
-    return wcscmp(a->value.utf16le, b->value.utf16le) == 0;
-#endif
+    return wcscmp((wchar_t *) a->value.utf16le, (wchar_t *) b->value.utf16le) == 0;
   }
 }
 
@@ -207,12 +196,10 @@ json__compare_string (const json_string_t *a, const json_string_t *b) {
   switch (a->encoding) {
   case json_string_utf8:
   default:
-    return strcmp(a->value.utf8, b->value.utf8);
+    return strcmp((char *) a->value.utf8, (char *) b->value.utf8);
 
-#ifdef _WIN32
   case json_string_utf16le:
-    return wcscmp(a->value.utf16le, b->value.utf16le);
-#endif
+    return wcscmp((wchar_t *) a->value.utf16le, (wchar_t *) b->value.utf16le);
   }
 }
 
@@ -457,8 +444,10 @@ json_number_value (const json_t *number) {
 }
 
 int
-json_create_string_utf8 (const char *value, json_t **result) {
-  json_string_t *str = malloc(sizeof(json_string_t) + ((strlen(value) + 1) * sizeof(char)));
+json_create_string_utf8 (const utf8_t *value, size_t len, json_t **result) {
+  if (len == (size_t) -1) len = strlen((char *) value);
+
+  json_string_t *str = malloc(sizeof(json_string_t) + (len + 1) * sizeof(utf8_t));
 
   if (str == NULL) return -1;
 
@@ -468,18 +457,20 @@ json_create_string_utf8 (const char *value, json_t **result) {
   str->refs = 1;
   str->encoding = json_string_utf8;
   str->value.utf8 = end;
+  str->value.utf8[len] = '\0';
 
-  strcpy(str->value.utf8, value);
+  memcpy(str->value.utf8, value, len * sizeof(utf8_t));
 
   json__attach_to_scope(*result = (json_t *) str);
 
   return 0;
 }
 
-#ifdef _WIN32
 int
-json_create_string_utf16le (const wchar_t *value, json_t **result) {
-  json_string_t *str = malloc(sizeof(json_string_t) + ((wcslen(value) + 1) * sizeof(wchar_t)));
+json_create_string_utf16le (const utf16_t *value, size_t len, json_t **result) {
+  if (len == (size_t) -1) len = wcslen((wchar_t *) value);
+
+  json_string_t *str = malloc(sizeof(json_string_t) + (len + 1) * sizeof(utf16_t));
 
   if (str == NULL) return -1;
 
@@ -489,26 +480,24 @@ json_create_string_utf16le (const wchar_t *value, json_t **result) {
   str->refs = 1;
   str->encoding = json_string_utf16le;
   str->value.utf16le = end;
+  str->value.utf16le[len] = L'\0';
 
-  wcscpy(str->value.utf16le, value);
+  memcpy(str->value.utf8, value, len * sizeof(utf16_t));
 
   json__attach_to_scope(*result = (json_t *) str);
 
   return 0;
 }
-#endif
 
-const char *
+const utf8_t *
 json_string_value_utf8 (const json_t *string) {
   return json_to(string, string)->value.utf8;
 }
 
-#ifdef _WIN32
-const wchar_t *
+const utf16_t *
 json_string_value_utf16le (const json_t *string) {
   return json_to(string, string)->value.utf16le;
 }
-#endif
 
 int
 json_create_array (size_t len, json_t **result) {
@@ -685,7 +674,7 @@ json_object_delete (json_t *object, const json_t *key) {
 }
 
 static inline int
-json__char_buf_ensure_capacity (json_char_buf_t *buf, size_t len) {
+json__utf8_buf_ensure_capacity (json_utf8_buf_t *buf, size_t len) {
   if (buf->len + len <= buf->capacity) return 0;
 
   while (buf->len + len > buf->capacity) {
@@ -693,7 +682,7 @@ json__char_buf_ensure_capacity (json_char_buf_t *buf, size_t len) {
     else buf->capacity = 16;
   }
 
-  char *value = realloc(buf->value, (buf->capacity + 1) * sizeof(char));
+  utf8_t *value = realloc(buf->value, (buf->capacity + 1) * sizeof(utf8_t));
 
   if (value == NULL) return -1;
 
@@ -703,24 +692,23 @@ json__char_buf_ensure_capacity (json_char_buf_t *buf, size_t len) {
 }
 
 static inline int
-json__char_buf_append (json_char_buf_t *buf, char *value, size_t len) {
+json__utf8_buf_append (json_utf8_buf_t *buf, utf8_t *value, size_t len) {
   int err;
 
-  if (len == (size_t) -1) len = strlen(value);
+  if (len == (size_t) -1) len = strlen((char *) value);
 
-  err = json__char_buf_ensure_capacity(buf, len);
+  err = json__utf8_buf_ensure_capacity(buf, len);
   if (err < 0) return err;
 
-  memcpy(&buf->value[buf->len], value, len * sizeof(char));
+  memcpy(&buf->value[buf->len], value, len * sizeof(utf8_t));
 
   buf->value[buf->len += len] = '\0';
 
   return 0;
 }
 
-#ifdef _WIN32
 static inline int
-json__wchar_buf_ensure_capacity (json_wchar_buf_t *buf, size_t len) {
+json__utf16_buf_ensure_capacity (json_utf16_buf_t *buf, size_t len) {
   if (buf->len + len <= buf->capacity) return 0;
 
   while (buf->len + len > buf->capacity) {
@@ -728,7 +716,7 @@ json__wchar_buf_ensure_capacity (json_wchar_buf_t *buf, size_t len) {
     else buf->capacity = 16;
   }
 
-  wchar_t *value = realloc(buf->value, (buf->capacity + 1) * sizeof(wchar_t));
+  utf16_t *value = realloc(buf->value, (buf->capacity + 1) * sizeof(utf16_t));
 
   if (value == NULL) return -1;
 
@@ -738,64 +726,63 @@ json__wchar_buf_ensure_capacity (json_wchar_buf_t *buf, size_t len) {
 }
 
 static inline int
-json__wchar_buf_append (json_wchar_buf_t *buf, wchar_t *value, size_t len) {
+json__utf16_buf_append (json_utf16_buf_t *buf, utf16_t *value, size_t len) {
   int err;
 
-  if (len == (size_t) -1) len = wcslen(value);
+  if (len == (size_t) -1) len = wcslen((wchar_t *) value);
 
-  err = json__wchar_buf_ensure_capacity(buf, len);
+  err = json__utf16_buf_ensure_capacity(buf, len);
   if (err < 0) return err;
 
-  memcpy(&buf->value[buf->len], value, len * sizeof(wchar_t));
+  memcpy(&buf->value[buf->len], value, len * sizeof(utf16_t));
 
   buf->value[buf->len += len] = L'\0';
 
   return 0;
 }
-#endif
 
 static inline int
-json__encode_utf8 (const json_t *value, json_char_buf_t *buf);
+json__encode_utf8 (const json_t *value, json_utf8_buf_t *buf);
 
 static inline int
-json__encode_utf8_null (json_char_buf_t *buf) {
-  return json__char_buf_append(buf, "null", 4);
+json__encode_utf8_null (json_utf8_buf_t *buf) {
+  return json__utf8_buf_append(buf, (utf8_t *) "null", 4);
 }
 
 static inline int
-json__encode_utf8_boolean (const json_boolean_t *boolean, json_char_buf_t *buf) {
-  return json__char_buf_append(buf, boolean->value ? "true" : "false", boolean->value ? 4 : 5);
+json__encode_utf8_boolean (const json_boolean_t *boolean, json_utf8_buf_t *buf) {
+  return json__utf8_buf_append(buf, boolean->value ? (utf8_t *) "true" : (utf8_t *) "false", boolean->value ? 4 : 5);
 }
 
 static inline int
-json__encode_utf8_number (const json_number_t *number, json_char_buf_t *buf) {
+json__encode_utf8_number (const json_number_t *number, json_utf8_buf_t *buf) {
   return -1;
 }
 
 static inline int
-json__encode_utf8_string (const json_string_t *string, json_char_buf_t *buf) {
+json__encode_utf8_string (const json_string_t *string, json_utf8_buf_t *buf) {
   int err;
 
   assert(string->encoding == json_string_utf8);
 
-  err = json__char_buf_append(buf, "\"", 1);
+  err = json__utf8_buf_append(buf, (utf8_t *) "\"", 1);
   if (err < 0) return err;
 
-  size_t len = strlen(string->value.utf8);
+  size_t len = strlen((char *) string->value.utf8);
 
-  err = json__char_buf_ensure_capacity(buf, len);
+  err = json__utf8_buf_ensure_capacity(buf, len);
   if (err < 0) return err;
 
-  char escaped[6];
+  utf8_t escaped[6];
 
   for (size_t i = 0; i < len; i++) {
-    char c = string->value.utf8[i];
+    utf8_t c = string->value.utf8[i];
 
     if (c >= 32 && c != '\"' && c != '\\') {
-      err = json__char_buf_append(buf, &c, 1);
+      err = json__utf8_buf_append(buf, &c, 1);
       if (err < 0) return err;
     } else {
-      err = json__char_buf_append(buf, "\\", 1);
+      err = json__utf8_buf_append(buf, (utf8_t *) "\\", 1);
       if (err < 0) return err;
 
       switch (c) {
@@ -806,31 +793,31 @@ json__encode_utf8_string (const json_string_t *string, json_char_buf_t *buf) {
       case '\n':
       case '\r':
       case '\t':
-        err = json__char_buf_append(buf, &c, 1);
+        err = json__utf8_buf_append(buf, &c, 1);
         if (err < 0) return err;
         break;
 
       default:
-        err = snprintf(escaped, 6, "u%04x", c);
+        err = snprintf((char *) escaped, 6, "u%04x", c);
         if (err < 0) return err;
 
-        err = json__char_buf_append(buf, escaped, 5);
+        err = json__utf8_buf_append(buf, escaped, 5);
         if (err < 0) return err;
       }
     }
   }
 
-  err = json__char_buf_append(buf, "\"", 1);
+  err = json__utf8_buf_append(buf, (utf8_t *) "\"", 1);
   if (err < 0) return err;
 
   return 0;
 }
 
 static inline int
-json__encode_utf8_array (const json_array_t *array, json_char_buf_t *buf) {
+json__encode_utf8_array (const json_array_t *array, json_utf8_buf_t *buf) {
   int err;
 
-  err = json__char_buf_append(buf, "[", 1);
+  err = json__utf8_buf_append(buf, (utf8_t *) "[", 1);
   if (err < 0) return err;
 
   bool first = true;
@@ -838,7 +825,7 @@ json__encode_utf8_array (const json_array_t *array, json_char_buf_t *buf) {
   for (size_t i = 0, n = array->len; i < n; i++) {
     if (first) first = false;
     else {
-      err = json__char_buf_append(buf, ",", 1);
+      err = json__utf8_buf_append(buf, (utf8_t *) ",", 1);
       if (err < 0) return err;
     }
 
@@ -846,20 +833,20 @@ json__encode_utf8_array (const json_array_t *array, json_char_buf_t *buf) {
     if (err < 0) return err;
   }
 
-  err = json__char_buf_append(buf, "]", 1);
+  err = json__utf8_buf_append(buf, (utf8_t *) "]", 1);
   if (err < 0) return err;
 
   return 0;
 }
 
 static inline int
-json__encode_utf8_property (const json_property_t *property, json_char_buf_t *buf) {
+json__encode_utf8_property (const json_property_t *property, json_utf8_buf_t *buf) {
   int err;
 
   err = json__encode_utf8_string(json_to(string, property->key), buf);
   if (err < 0) return err;
 
-  err = json__char_buf_append(buf, ":", 1);
+  err = json__utf8_buf_append(buf, (utf8_t *) ":", 1);
   if (err < 0) return err;
 
   err = json__encode_utf8(property->value, buf);
@@ -869,10 +856,10 @@ json__encode_utf8_property (const json_property_t *property, json_char_buf_t *bu
 }
 
 static inline int
-json__encode_utf8_object (const json_object_t *object, json_char_buf_t *buf) {
+json__encode_utf8_object (const json_object_t *object, json_utf8_buf_t *buf) {
   int err;
 
-  err = json__char_buf_append(buf, "{", 1);
+  err = json__utf8_buf_append(buf, (utf8_t *) "{", 1);
   if (err < 0) return err;
 
   bool first = true;
@@ -884,7 +871,7 @@ json__encode_utf8_object (const json_object_t *object, json_char_buf_t *buf) {
 
     if (first) first = false;
     else {
-      err = json__char_buf_append(buf, ",", 1);
+      err = json__utf8_buf_append(buf, (utf8_t *) ",", 1);
       if (err < 0) return err;
     }
 
@@ -892,14 +879,14 @@ json__encode_utf8_object (const json_object_t *object, json_char_buf_t *buf) {
     if (err < 0) return err;
   }
 
-  err = json__char_buf_append(buf, "}", 1);
+  err = json__utf8_buf_append(buf, (utf8_t *) "}", 1);
   if (err < 0) return err;
 
   return 0;
 }
 
 static inline int
-json__encode_utf8 (const json_t *value, json_char_buf_t *buf) {
+json__encode_utf8 (const json_t *value, json_utf8_buf_t *buf) {
   switch (value->type) {
   case json_null:
     return json__encode_utf8_null(buf);
@@ -922,10 +909,10 @@ json__encode_utf8 (const json_t *value, json_char_buf_t *buf) {
 }
 
 int
-json_encode_utf8 (const json_t *value, char **result) {
+json_encode_utf8 (const json_t *value, utf8_t **result) {
   int err;
 
-  json_char_buf_t buf = {
+  json_utf8_buf_t buf = {
     .value = NULL,
     .len = 0,
     .capacity = 0,
@@ -934,7 +921,7 @@ json_encode_utf8 (const json_t *value, char **result) {
   err = json__encode_utf8(value, &buf);
   if (err < 0) goto err;
 
-  *result = realloc(buf.value, (buf.len + 1) * sizeof(char));
+  *result = realloc(buf.value, (buf.len + 1) * sizeof(utf8_t));
 
   return 0;
 
@@ -944,49 +931,48 @@ err:
   return -1;
 }
 
-#ifdef _WIN32
 static inline int
-json__encode_utf16le (const json_t *value, json_wchar_buf_t *buf);
+json__encode_utf16le (const json_t *value, json_utf16_buf_t *buf);
 
 static inline int
-json__encode_utf16le_null (json_wchar_buf_t *buf) {
-  return json__wchar_buf_append(buf, L"null", 4);
+json__encode_utf16le_null (json_utf16_buf_t *buf) {
+  return json__utf16_buf_append(buf, (utf16_t *) L"null", 4);
 }
 
 static inline int
-json__encode_utf16le_boolean (const json_boolean_t *boolean, json_wchar_buf_t *buf) {
-  return json__wchar_buf_append(buf, boolean->value ? L"true" : L"false", boolean->value ? 4 : 5);
+json__encode_utf16le_boolean (const json_boolean_t *boolean, json_utf16_buf_t *buf) {
+  return json__utf16_buf_append(buf, boolean->value ? (utf16_t *) L"true" : (utf16_t *) L"false", boolean->value ? 4 : 5);
 }
 
 static inline int
-json__encode_utf16le_number (const json_number_t *number, json_wchar_buf_t *buf) {
+json__encode_utf16le_number (const json_number_t *number, json_utf16_buf_t *buf) {
   return -1;
 }
 
 static inline int
-json__encode_utf16le_string (const json_string_t *string, json_wchar_buf_t *buf) {
+json__encode_utf16le_string (const json_string_t *string, json_utf16_buf_t *buf) {
   int err;
 
   assert(string->encoding == json_string_utf16le);
 
-  err = json__wchar_buf_append(buf, L"\"", 1);
+  err = json__utf16_buf_append(buf, (utf16_t *) L"\"", 1);
   if (err < 0) return err;
 
-  size_t len = wcslen(string->value.utf16le);
+  size_t len = wcslen((wchar_t *) string->value.utf16le);
 
-  err = json__wchar_buf_ensure_capacity(buf, len);
+  err = json__utf16_buf_ensure_capacity(buf, len);
   if (err < 0) return err;
 
-  wchar_t escaped[6];
+  utf16_t escaped[6];
 
   for (size_t i = 0; i < len; i++) {
-    wchar_t c = string->value.utf16le[i];
+    utf16_t c = string->value.utf16le[i];
 
     if (c >= 32 && c != L'\"' && c != L'\\') {
-      err = json__wchar_buf_append(buf, &c, 1);
+      err = json__utf16_buf_append(buf, &c, 1);
       if (err < 0) return err;
     } else {
-      err = json__wchar_buf_append(buf, L"\\", 1);
+      err = json__utf16_buf_append(buf, (utf16_t *) L"\\", 1);
       if (err < 0) return err;
 
       switch (c) {
@@ -997,31 +983,31 @@ json__encode_utf16le_string (const json_string_t *string, json_wchar_buf_t *buf)
       case L'\n':
       case L'\r':
       case L'\t':
-        err = json__wchar_buf_append(buf, &c, 1);
+        err = json__utf16_buf_append(buf, &c, 1);
         if (err < 0) return err;
         break;
 
       default:
-        err = swprintf(escaped, 6, L"u%04x", c);
+        err = swprintf((wchar_t *) escaped, 6, L"u%04x", c);
         if (err < 0) return err;
 
-        err = json__wchar_buf_append(buf, escaped, 5);
+        err = json__utf16_buf_append(buf, escaped, 5);
         if (err < 0) return err;
       }
     }
   }
 
-  err = json__wchar_buf_append(buf, L"\"", 1);
+  err = json__utf16_buf_append(buf, (utf16_t *) L"\"", 1);
   if (err < 0) return err;
 
   return 0;
 }
 
 static inline int
-json__encode_utf16le_array (const json_array_t *array, json_wchar_buf_t *buf) {
+json__encode_utf16le_array (const json_array_t *array, json_utf16_buf_t *buf) {
   int err;
 
-  err = json__wchar_buf_append(buf, L"[", 1);
+  err = json__utf16_buf_append(buf, (utf16_t *) L"[", 1);
   if (err < 0) return err;
 
   bool first = true;
@@ -1029,7 +1015,7 @@ json__encode_utf16le_array (const json_array_t *array, json_wchar_buf_t *buf) {
   for (size_t i = 0, n = array->len; i < n; i++) {
     if (first) first = false;
     else {
-      err = json__wchar_buf_append(buf, L",", 1);
+      err = json__utf16_buf_append(buf, (utf16_t *) L",", 1);
       if (err < 0) return err;
     }
 
@@ -1037,20 +1023,20 @@ json__encode_utf16le_array (const json_array_t *array, json_wchar_buf_t *buf) {
     if (err < 0) return err;
   }
 
-  err = json__wchar_buf_append(buf, L"]", 1);
+  err = json__utf16_buf_append(buf, (utf16_t *) L"]", 1);
   if (err < 0) return err;
 
   return 0;
 }
 
 static inline int
-json__encode_utf16le_property (const json_property_t *property, json_wchar_buf_t *buf) {
+json__encode_utf16le_property (const json_property_t *property, json_utf16_buf_t *buf) {
   int err;
 
   err = json__encode_utf16le_string(json_to(string, property->key), buf);
   if (err < 0) return err;
 
-  err = json__wchar_buf_append(buf, L":", 1);
+  err = json__utf16_buf_append(buf, (utf16_t *) L":", 1);
   if (err < 0) return err;
 
   err = json__encode_utf16le(property->value, buf);
@@ -1060,10 +1046,10 @@ json__encode_utf16le_property (const json_property_t *property, json_wchar_buf_t
 }
 
 static inline int
-json__encode_utf16le_object (const json_object_t *object, json_wchar_buf_t *buf) {
+json__encode_utf16le_object (const json_object_t *object, json_utf16_buf_t *buf) {
   int err;
 
-  err = json__wchar_buf_append(buf, L"{", 1);
+  err = json__utf16_buf_append(buf, (utf16_t *) L"{", 1);
   if (err < 0) return err;
 
   bool first = true;
@@ -1075,7 +1061,7 @@ json__encode_utf16le_object (const json_object_t *object, json_wchar_buf_t *buf)
 
     if (first) first = false;
     else {
-      err = json__wchar_buf_append(buf, L",", 1);
+      err = json__utf16_buf_append(buf, (utf16_t *) L",", 1);
       if (err < 0) return err;
     }
 
@@ -1083,14 +1069,14 @@ json__encode_utf16le_object (const json_object_t *object, json_wchar_buf_t *buf)
     if (err < 0) return err;
   }
 
-  err = json__wchar_buf_append(buf, L"}", 1);
+  err = json__utf16_buf_append(buf, (utf16_t *) L"}", 1);
   if (err < 0) return err;
 
   return 0;
 }
 
 static inline int
-json__encode_utf16le (const json_t *value, json_wchar_buf_t *buf) {
+json__encode_utf16le (const json_t *value, json_utf16_buf_t *buf) {
   switch (value->type) {
   case json_null:
     return json__encode_utf16le_null(buf);
@@ -1113,10 +1099,10 @@ json__encode_utf16le (const json_t *value, json_wchar_buf_t *buf) {
 }
 
 int
-json_encode_utf16le (const json_t *value, wchar_t **result) {
+json_encode_utf16le (const json_t *value, utf16_t **result) {
   int err;
 
-  json_wchar_buf_t buf = {
+  json_utf16_buf_t buf = {
     .value = NULL,
     .len = 0,
     .capacity = 0,
@@ -1125,7 +1111,7 @@ json_encode_utf16le (const json_t *value, wchar_t **result) {
   err = json__encode_utf16le(value, &buf);
   if (err < 0) goto err;
 
-  *result = realloc(buf.value, (buf.len + 1) * sizeof(wchar_t));
+  *result = realloc(buf.value, (buf.len + 1) * sizeof(utf16_t));
 
   return 0;
 
@@ -1134,16 +1120,13 @@ err:
 
   return -1;
 }
-#endif
 
 int
-json_decode_utf8 (const char *buffer, size_t len, json_t **result) {
+json_decode_utf8 (const utf8_t *buffer, size_t len, json_t **result) {
   return -1;
 }
 
-#ifdef _WIN32
 int
-json_decode_utf16le (const wchar_t *buffer, size_t len, json_t **result) {
+json_decode_utf16le (const utf16_t *buffer, size_t len, json_t **result) {
   return -1;
 }
-#endif

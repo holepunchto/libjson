@@ -7,6 +7,7 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <utf.h>
 
 typedef enum {
   json_null,
@@ -87,20 +88,16 @@ double
 json_number_value (const json_t *number);
 
 int
-json_create_string_utf8 (const char *value, json_t **result);
+json_create_string_utf8 (const utf8_t *value, size_t len, json_t **result);
 
-#ifdef _WIN32
 int
-json_create_string_utf16le (const wchar_t *value, json_t **result);
-#endif
+json_create_string_utf16le (const utf16_t *value, size_t len, json_t **result);
 
-const char *
+const utf8_t *
 json_string_value_utf8 (const json_t *string);
 
-#ifdef _WIN32
-const wchar_t *
+const utf16_t *
 json_string_value_utf16le (const json_t *string);
-#endif
 
 int
 json_create_array (size_t len, json_t **result);
@@ -133,20 +130,16 @@ int
 json_object_delete (json_t *object, const json_t *key);
 
 int
-json_encode_utf8 (const json_t *value, char **result);
-
-#ifdef _WIN32
-int
-json_encode_utf16le (const json_t *value, wchar_t **result);
-#endif
+json_encode_utf8 (const json_t *value, utf8_t **result);
 
 int
-json_decode_utf8 (const char *buffer, size_t len, json_t **result);
+json_encode_utf16le (const json_t *value, utf16_t **result);
 
-#ifdef _WIN32
 int
-json_decode_utf16le (const wchar_t *buffer, size_t len, json_t **result);
-#endif
+json_decode_utf8 (const utf8_t *buffer, size_t len, json_t **result);
+
+int
+json_decode_utf16le (const utf16_t *buffer, size_t len, json_t **result);
 
 #ifdef __cplusplus
 }
