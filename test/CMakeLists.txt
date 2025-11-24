@@ -1,4 +1,14 @@
 list(APPEND tests
+  decode-utf8-array
+  decode-utf8-array-empty
+  decode-utf8-false
+  decode-utf8-null
+  decode-utf8-object
+  decode-utf8-object-empty
+  decode-utf8-string
+  decode-utf8-string-empty
+  decode-utf8-string-escape
+  decode-utf8-true
 )
 
 foreach(test IN LISTS tests)
