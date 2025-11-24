@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 4.0)
+
+find_package(cmake-fetch REQUIRED PATHS node_modules/cmake-fetch)
 
 project(json C)
 
-if(NOT TARGET utf)
-  add_subdirectory(vendor/libutf EXCLUDE_FROM_ALL)
-endif()
+fetch_package("github:holepunchto/libutf")
 
 add_library(json OBJECT)
 
@@ -30,7 +30,7 @@ target_include_directories(
     $<TARGET_PROPERTY:utf,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
-add_library(json_shared SHARED $<TARGET_OBJECTS:json>)
+add_library(json_shared SHARED)
 
 set_target_properties(
   json_shared
@@ -42,10 +42,11 @@ set_target_properties(
 target_link_libraries(
   json_shared
   PUBLIC
+    json
     utf_shared
 )
 
-add_library(json_static STATIC $<TARGET_OBJECTS:json>)
+add_library(json_static STATIC)
 
 set_target_properties(
   json_static
@@ -57,6 +58,7 @@ set_target_properties(
 target_link_libraries(
   json_static
   PUBLIC
+    json
     utf_static
 )
 
@@ -66,5 +68,6 @@ install(FILES include/json.h DESTINATION include)
 
 if(PROJECT_IS_TOP_LEVEL)
   enable_testing()
+
   add_subdirectory(test)
 endif()
