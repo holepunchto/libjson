@@ -91,40 +91,40 @@ struct json_utf16_buf_s {
 };
 
 json_type_t
-json_typeof (const json_t *value) {
+json_typeof(const json_t *value) {
   return value->type;
 }
 
 extern bool
-json_is_null (const json_t *value);
+json_is_null(const json_t *value);
 
 extern bool
-json_is_boolean (const json_t *value);
+json_is_boolean(const json_t *value);
 
 extern bool
-json_is_number (const json_t *value);
+json_is_number(const json_t *value);
 
 extern bool
-json_is_string (const json_t *value);
+json_is_string(const json_t *value);
 
 extern bool
-json_is_array (const json_t *value);
+json_is_array(const json_t *value);
 
 extern bool
-json_is_object (const json_t *value);
+json_is_object(const json_t *value);
 
 static inline bool
-json__equal_boolean (const json_boolean_t *a, const json_boolean_t *b) {
+json__equal_boolean(const json_boolean_t *a, const json_boolean_t *b) {
   return a->value == b->value;
 }
 
 static inline bool
-json__equal_number (const json_number_t *a, const json_number_t *b) {
+json__equal_number(const json_number_t *a, const json_number_t *b) {
   return a->value == b->value;
 }
 
 static inline bool
-json__equal_string (const json_string_t *a, const json_string_t *b) {
+json__equal_string(const json_string_t *a, const json_string_t *b) {
   if (a->encoding != b->encoding) return false;
 
   switch (a->encoding) {
@@ -138,17 +138,17 @@ json__equal_string (const json_string_t *a, const json_string_t *b) {
 }
 
 static inline bool
-json__equal_array (const json_array_t *a, const json_array_t *b) {
+json__equal_array(const json_array_t *a, const json_array_t *b) {
   return true;
 }
 
 static inline bool
-json__equal_object (const json_object_t *a, const json_object_t *b) {
+json__equal_object(const json_object_t *a, const json_object_t *b) {
   return true;
 }
 
 bool
-json_equal (const json_t *a, const json_t *b) {
+json_equal(const json_t *a, const json_t *b) {
   if (a->type != b->type) return false;
 
   return false;
@@ -175,19 +175,19 @@ json_equal (const json_t *a, const json_t *b) {
 }
 
 static inline bool
-json__compare_boolean (const json_boolean_t *a, const json_boolean_t *b) {
+json__compare_boolean(const json_boolean_t *a, const json_boolean_t *b) {
   return a->value < b->value ? -1 : a->value > b->value ? 1
                                                         : 0;
 }
 
 static inline bool
-json__compare_number (const json_number_t *a, const json_number_t *b) {
+json__compare_number(const json_number_t *a, const json_number_t *b) {
   return a->value < b->value ? -1 : a->value > b->value ? 1
                                                         : 0;
 }
 
 static inline bool
-json__compare_string (const json_string_t *a, const json_string_t *b) {
+json__compare_string(const json_string_t *a, const json_string_t *b) {
   if (a->encoding != b->encoding) {
     return a->encoding < b->encoding ? -1 : a->encoding > b->encoding ? 1
                                                                       : 0;
@@ -204,17 +204,17 @@ json__compare_string (const json_string_t *a, const json_string_t *b) {
 }
 
 static inline bool
-json__compare_array (const json_array_t *a, const json_array_t *b) {
+json__compare_array(const json_array_t *a, const json_array_t *b) {
   return 0;
 }
 
 static inline bool
-json__compare_object (const json_object_t *a, const json_object_t *b) {
+json__compare_object(const json_object_t *a, const json_object_t *b) {
   return 0;
 }
 
 int
-json_compare (const json_t *a, const json_t *b) {
+json_compare(const json_t *a, const json_t *b) {
   if (a->type != b->type) {
     return a->type < b->type ? -1 : a->type > b->type ? 1
                                                       : 0;
@@ -243,14 +243,14 @@ json_compare (const json_t *a, const json_t *b) {
 }
 
 static inline void
-json__free_array (json_array_t *array) {
+json__free_array(json_array_t *array) {
   for (size_t i = 0, n = array->len; i < n; i++) {
     json_deref(array->values[i]);
   }
 }
 
 static inline void
-json__free_object (json_object_t *object) {
+json__free_object(json_object_t *object) {
   for (size_t i = 0, n = object->len; i < n; i++) {
     json_property_t *property = &object->properties[i];
 
@@ -260,7 +260,7 @@ json__free_object (json_object_t *object) {
 }
 
 static inline void
-json__free (json_t *value) {
+json__free(json_t *value) {
   switch (value->type) {
   case json_null:
   case json_boolean:
@@ -282,7 +282,7 @@ json__free (json_t *value) {
 }
 
 int
-json_ref (json_t *value) {
+json_ref(json_t *value) {
   switch (value->type) {
   case json_null:
   case json_boolean:
@@ -304,7 +304,7 @@ json_ref (json_t *value) {
 }
 
 int
-json_deref (json_t *value) {
+json_deref(json_t *value) {
   int *refsp = NULL;
 
   switch (value->type) {
@@ -340,7 +340,7 @@ json_deref (json_t *value) {
 static json_scope_t *json__scope = NULL;
 
 int
-json_open_scope (json_scope_t **result) {
+json_open_scope(json_scope_t **result) {
   json_scope_t *scope = malloc(sizeof(json_scope_t));
 
   if (scope == NULL) return -1;
@@ -356,7 +356,7 @@ json_open_scope (json_scope_t **result) {
 }
 
 int
-json_close_scope (json_scope_t *scope) {
+json_close_scope(json_scope_t *scope) {
   assert(json__scope == scope);
 
   for (size_t i = 0, n = scope->len; i < n; i++) {
@@ -372,7 +372,7 @@ json_close_scope (json_scope_t *scope) {
 }
 
 static inline void
-json__attach_to_scope (json_t *value) {
+json__attach_to_scope(json_t *value) {
   json_scope_t *scope = json__scope;
 
   if (scope == NULL) return;
@@ -395,7 +395,7 @@ static const json_null_t json__null = {
 };
 
 int
-json_create_null (json_t **result) {
+json_create_null(json_t **result) {
   *result = (json_t *) &json__null;
 
   return 0;
@@ -412,19 +412,19 @@ static const json_boolean_t json__false = {
 };
 
 int
-json_create_boolean (bool value, json_t **result) {
+json_create_boolean(bool value, json_t **result) {
   *result = value ? (json_t *) &json__true : (json_t *) &json__false;
 
   return 0;
 }
 
 bool
-json_boolean_value (const json_t *boolean) {
+json_boolean_value(const json_t *boolean) {
   return json_to(boolean, boolean)->value;
 }
 
 int
-json_create_number (double value, json_t **result) {
+json_create_number(double value, json_t **result) {
   json_number_t *number = malloc(sizeof(json_number_t));
 
   if (number == NULL) return -1;
@@ -439,12 +439,12 @@ json_create_number (double value, json_t **result) {
 }
 
 double
-json_number_value (const json_t *number) {
+json_number_value(const json_t *number) {
   return json_to(number, number)->value;
 }
 
 int
-json_create_string_utf8 (const utf8_t *value, size_t len, json_t **result) {
+json_create_string_utf8(const utf8_t *value, size_t len, json_t **result) {
   if (len == (size_t) -1) len = strlen((char *) value);
 
   json_string_t *str = malloc(sizeof(json_string_t) + (len + 1) * sizeof(utf8_t));
@@ -467,7 +467,7 @@ json_create_string_utf8 (const utf8_t *value, size_t len, json_t **result) {
 }
 
 int
-json_create_string_utf16le (const utf16_t *value, size_t len, json_t **result) {
+json_create_string_utf16le(const utf16_t *value, size_t len, json_t **result) {
   if (len == (size_t) -1) len = wcslen((wchar_t *) value);
 
   json_string_t *str = malloc(sizeof(json_string_t) + (len + 1) * sizeof(utf16_t));
@@ -490,17 +490,17 @@ json_create_string_utf16le (const utf16_t *value, size_t len, json_t **result) {
 }
 
 const utf8_t *
-json_string_value_utf8 (const json_t *string) {
+json_string_value_utf8(const json_t *string) {
   return json_to(string, string)->value.utf8;
 }
 
 const utf16_t *
-json_string_value_utf16le (const json_t *string) {
+json_string_value_utf16le(const json_t *string) {
   return json_to(string, string)->value.utf16le;
 }
 
 int
-json_create_array (size_t len, json_t **result) {
+json_create_array(size_t len, json_t **result) {
   json_array_t *arr = malloc(sizeof(json_array_t) + len * sizeof(json_t *));
 
   if (arr == NULL) return -1;
@@ -519,12 +519,12 @@ json_create_array (size_t len, json_t **result) {
 }
 
 size_t
-json_array_size (const json_t *array) {
+json_array_size(const json_t *array) {
   return json_to(array, array)->len;
 }
 
 json_t *
-json_array_get (const json_t *array, size_t index) {
+json_array_get(const json_t *array, size_t index) {
   json_array_t *arr = json_to(array, array);
 
   if (index >= arr->len) return NULL;
@@ -533,7 +533,7 @@ json_array_get (const json_t *array, size_t index) {
 }
 
 int
-json_array_set (json_t *array, size_t index, json_t *value) {
+json_array_set(json_t *array, size_t index, json_t *value) {
   json_array_t *arr = json_to(array, array);
 
   if (index >= arr->len) return -1;
@@ -547,7 +547,7 @@ json_array_set (json_t *array, size_t index, json_t *value) {
 }
 
 int
-json_array_delete (json_t *array, size_t index) {
+json_array_delete(json_t *array, size_t index) {
   json_array_t *arr = json_to(array, array);
 
   if (index >= arr->len) return -1;
@@ -560,12 +560,12 @@ json_array_delete (json_t *array, size_t index) {
 }
 
 static inline bool
-json__property_matches (json_property_t *property, const json_t *key) {
+json__property_matches(json_property_t *property, const json_t *key) {
   return property->key->type != json_null && json__equal_string(json_to(string, property->key), json_to(string, key));
 }
 
 static inline void
-json__property_set (json_property_t *property, json_t *key, json_t *value) {
+json__property_set(json_property_t *property, json_t *key, json_t *value) {
   json_ref(key);
   json_ref(value);
   json_deref(property->key);
@@ -576,7 +576,7 @@ json__property_set (json_property_t *property, json_t *key, json_t *value) {
 }
 
 static inline void
-json__property_delete (json_property_t *property) {
+json__property_delete(json_property_t *property) {
   json_deref(property->key);
   json_deref(property->value);
 
@@ -584,7 +584,7 @@ json__property_delete (json_property_t *property) {
 }
 
 int
-json_create_object (size_t len, json_t **result) {
+json_create_object(size_t len, json_t **result) {
   json_object_t *obj = malloc(sizeof(json_object_t) + len * sizeof(json_property_t));
 
   if (obj == NULL) return -1;
@@ -594,7 +594,7 @@ json_create_object (size_t len, json_t **result) {
   obj->len = len;
 
   for (size_t i = 0, n = obj->len; i < n; i++) {
-    obj->properties[i] = (json_property_t){
+    obj->properties[i] = (json_property_t) {
       .key = (json_t *) &json__null,
       .value = (json_t *) &json__null,
     };
@@ -606,12 +606,12 @@ json_create_object (size_t len, json_t **result) {
 }
 
 size_t
-json_object_size (const json_t *object) {
+json_object_size(const json_t *object) {
   return json_to(object, object)->len;
 }
 
 json_t *
-json_object_get (const json_t *object, const json_t *key) {
+json_object_get(const json_t *object, const json_t *key) {
   json_object_t *obj = json_to(object, object);
 
   assert(key->type == json_string);
@@ -628,7 +628,7 @@ json_object_get (const json_t *object, const json_t *key) {
 }
 
 int
-json_object_set (json_t *object, json_t *key, json_t *value) {
+json_object_set(json_t *object, json_t *key, json_t *value) {
   json_object_t *obj = json_to(object, object);
 
   assert(key->type == json_string);
@@ -656,7 +656,7 @@ json_object_set (json_t *object, json_t *key, json_t *value) {
 }
 
 int
-json_object_delete (json_t *object, const json_t *key) {
+json_object_delete(json_t *object, const json_t *key) {
   json_object_t *obj = json_to(object, object);
 
   assert(key->type == json_string);
@@ -674,7 +674,7 @@ json_object_delete (json_t *object, const json_t *key) {
 }
 
 static inline int
-json__utf8_buf_ensure_capacity (json_utf8_buf_t *buf, size_t len) {
+json__utf8_buf_ensure_capacity(json_utf8_buf_t *buf, size_t len) {
   if (buf->len + len <= buf->capacity) return 0;
 
   while (buf->len + len > buf->capacity) {
@@ -692,7 +692,7 @@ json__utf8_buf_ensure_capacity (json_utf8_buf_t *buf, size_t len) {
 }
 
 static inline int
-json__utf8_buf_append (json_utf8_buf_t *buf, utf8_t *value, size_t len) {
+json__utf8_buf_append(json_utf8_buf_t *buf, utf8_t *value, size_t len) {
   int err;
 
   if (len == (size_t) -1) len = strlen((char *) value);
@@ -708,7 +708,7 @@ json__utf8_buf_append (json_utf8_buf_t *buf, utf8_t *value, size_t len) {
 }
 
 static inline int
-json__utf16_buf_ensure_capacity (json_utf16_buf_t *buf, size_t len) {
+json__utf16_buf_ensure_capacity(json_utf16_buf_t *buf, size_t len) {
   if (buf->len + len <= buf->capacity) return 0;
 
   while (buf->len + len > buf->capacity) {
@@ -726,7 +726,7 @@ json__utf16_buf_ensure_capacity (json_utf16_buf_t *buf, size_t len) {
 }
 
 static inline int
-json__utf16_buf_append (json_utf16_buf_t *buf, utf16_t *value, size_t len) {
+json__utf16_buf_append(json_utf16_buf_t *buf, utf16_t *value, size_t len) {
   int err;
 
   if (len == (size_t) -1) len = wcslen((wchar_t *) value);
@@ -742,25 +742,25 @@ json__utf16_buf_append (json_utf16_buf_t *buf, utf16_t *value, size_t len) {
 }
 
 static inline int
-json__encode_utf8 (const json_t *value, json_utf8_buf_t *buf);
+json__encode_utf8(const json_t *value, json_utf8_buf_t *buf);
 
 static inline int
-json__encode_utf8_null (json_utf8_buf_t *buf) {
+json__encode_utf8_null(json_utf8_buf_t *buf) {
   return json__utf8_buf_append(buf, (utf8_t *) "null", 4);
 }
 
 static inline int
-json__encode_utf8_boolean (const json_boolean_t *boolean, json_utf8_buf_t *buf) {
+json__encode_utf8_boolean(const json_boolean_t *boolean, json_utf8_buf_t *buf) {
   return json__utf8_buf_append(buf, boolean->value ? (utf8_t *) "true" : (utf8_t *) "false", boolean->value ? 4 : 5);
 }
 
 static inline int
-json__encode_utf8_number (const json_number_t *number, json_utf8_buf_t *buf) {
+json__encode_utf8_number(const json_number_t *number, json_utf8_buf_t *buf) {
   return -1;
 }
 
 static inline int
-json__encode_utf8_string (const json_string_t *string, json_utf8_buf_t *buf) {
+json__encode_utf8_string(const json_string_t *string, json_utf8_buf_t *buf) {
   int err;
 
   assert(string->encoding == json_string_utf8);
@@ -814,7 +814,7 @@ json__encode_utf8_string (const json_string_t *string, json_utf8_buf_t *buf) {
 }
 
 static inline int
-json__encode_utf8_array (const json_array_t *array, json_utf8_buf_t *buf) {
+json__encode_utf8_array(const json_array_t *array, json_utf8_buf_t *buf) {
   int err;
 
   err = json__utf8_buf_append(buf, (utf8_t *) "[", 1);
@@ -840,7 +840,7 @@ json__encode_utf8_array (const json_array_t *array, json_utf8_buf_t *buf) {
 }
 
 static inline int
-json__encode_utf8_property (const json_property_t *property, json_utf8_buf_t *buf) {
+json__encode_utf8_property(const json_property_t *property, json_utf8_buf_t *buf) {
   int err;
 
   err = json__encode_utf8_string(json_to(string, property->key), buf);
@@ -856,7 +856,7 @@ json__encode_utf8_property (const json_property_t *property, json_utf8_buf_t *bu
 }
 
 static inline int
-json__encode_utf8_object (const json_object_t *object, json_utf8_buf_t *buf) {
+json__encode_utf8_object(const json_object_t *object, json_utf8_buf_t *buf) {
   int err;
 
   err = json__utf8_buf_append(buf, (utf8_t *) "{", 1);
@@ -886,7 +886,7 @@ json__encode_utf8_object (const json_object_t *object, json_utf8_buf_t *buf) {
 }
 
 static inline int
-json__encode_utf8 (const json_t *value, json_utf8_buf_t *buf) {
+json__encode_utf8(const json_t *value, json_utf8_buf_t *buf) {
   switch (value->type) {
   case json_null:
     return json__encode_utf8_null(buf);
@@ -909,7 +909,7 @@ json__encode_utf8 (const json_t *value, json_utf8_buf_t *buf) {
 }
 
 int
-json_encode_utf8 (const json_t *value, utf8_t **result) {
+json_encode_utf8(const json_t *value, utf8_t **result) {
   int err;
 
   json_utf8_buf_t buf = {
@@ -932,25 +932,25 @@ err:
 }
 
 static inline int
-json__encode_utf16le (const json_t *value, json_utf16_buf_t *buf);
+json__encode_utf16le(const json_t *value, json_utf16_buf_t *buf);
 
 static inline int
-json__encode_utf16le_null (json_utf16_buf_t *buf) {
+json__encode_utf16le_null(json_utf16_buf_t *buf) {
   return json__utf16_buf_append(buf, (utf16_t *) L"null", 4);
 }
 
 static inline int
-json__encode_utf16le_boolean (const json_boolean_t *boolean, json_utf16_buf_t *buf) {
+json__encode_utf16le_boolean(const json_boolean_t *boolean, json_utf16_buf_t *buf) {
   return json__utf16_buf_append(buf, boolean->value ? (utf16_t *) L"true" : (utf16_t *) L"false", boolean->value ? 4 : 5);
 }
 
 static inline int
-json__encode_utf16le_number (const json_number_t *number, json_utf16_buf_t *buf) {
+json__encode_utf16le_number(const json_number_t *number, json_utf16_buf_t *buf) {
   return -1;
 }
 
 static inline int
-json__encode_utf16le_string (const json_string_t *string, json_utf16_buf_t *buf) {
+json__encode_utf16le_string(const json_string_t *string, json_utf16_buf_t *buf) {
   int err;
 
   assert(string->encoding == json_string_utf16le);
@@ -1004,7 +1004,7 @@ json__encode_utf16le_string (const json_string_t *string, json_utf16_buf_t *buf)
 }
 
 static inline int
-json__encode_utf16le_array (const json_array_t *array, json_utf16_buf_t *buf) {
+json__encode_utf16le_array(const json_array_t *array, json_utf16_buf_t *buf) {
   int err;
 
   err = json__utf16_buf_append(buf, (utf16_t *) L"[", 1);
@@ -1030,7 +1030,7 @@ json__encode_utf16le_array (const json_array_t *array, json_utf16_buf_t *buf) {
 }
 
 static inline int
-json__encode_utf16le_property (const json_property_t *property, json_utf16_buf_t *buf) {
+json__encode_utf16le_property(const json_property_t *property, json_utf16_buf_t *buf) {
   int err;
 
   err = json__encode_utf16le_string(json_to(string, property->key), buf);
@@ -1046,7 +1046,7 @@ json__encode_utf16le_property (const json_property_t *property, json_utf16_buf_t
 }
 
 static inline int
-json__encode_utf16le_object (const json_object_t *object, json_utf16_buf_t *buf) {
+json__encode_utf16le_object(const json_object_t *object, json_utf16_buf_t *buf) {
   int err;
 
   err = json__utf16_buf_append(buf, (utf16_t *) L"{", 1);
@@ -1076,7 +1076,7 @@ json__encode_utf16le_object (const json_object_t *object, json_utf16_buf_t *buf)
 }
 
 static inline int
-json__encode_utf16le (const json_t *value, json_utf16_buf_t *buf) {
+json__encode_utf16le(const json_t *value, json_utf16_buf_t *buf) {
   switch (value->type) {
   case json_null:
     return json__encode_utf16le_null(buf);
@@ -1099,7 +1099,7 @@ json__encode_utf16le (const json_t *value, json_utf16_buf_t *buf) {
 }
 
 int
-json_encode_utf16le (const json_t *value, utf16_t **result) {
+json_encode_utf16le(const json_t *value, utf16_t **result) {
   int err;
 
   json_utf16_buf_t buf = {
@@ -1122,11 +1122,11 @@ err:
 }
 
 int
-json_decode_utf8 (const utf8_t *buffer, size_t len, json_t **result) {
+json_decode_utf8(const utf8_t *buffer, size_t len, json_t **result) {
   return -1;
 }
 
 int
-json_decode_utf16le (const utf16_t *buffer, size_t len, json_t **result) {
+json_decode_utf16le(const utf16_t *buffer, size_t len, json_t **result) {
   return -1;
 }
