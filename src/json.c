@@ -8,6 +8,14 @@
 
 #include "../include/json.h"
 
+#ifndef thread_local
+#ifdef _WIN32
+#define thread_local __declspec(thread)
+#else
+#define thread_local _Thread_local
+#endif
+#endif
+
 #define json_to(t, value) (assert(value->type == json_##t), (json_##t##_t *) value)
 
 typedef struct json_null_s json_null_t;
@@ -337,7 +345,7 @@ json_deref(json_t *value) {
   return refs;
 }
 
-static json_scope_t *json__scope = NULL;
+thread_local static json_scope_t *json__scope = NULL;
 
 int
 json_open_scope(json_scope_t **result) {
