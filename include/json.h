@@ -19,7 +19,6 @@ typedef enum {
 } json_type_t;
 
 typedef struct json_s json_t;
-typedef struct json_scope_s json_scope_t;
 
 json_type_t
 json_typeof(const json_t *value);
@@ -65,12 +64,6 @@ json_ref(json_t *value);
 
 int
 json_deref(json_t *value);
-
-int
-json_open_scope(json_scope_t **result);
-
-int
-json_close_scope(json_scope_t *scope);
 
 int
 json_create_null(json_t **result);
@@ -123,11 +116,101 @@ json_object_size(const json_t *object);
 json_t *
 json_object_get(const json_t *object, const json_t *key);
 
+static inline json_t *
+json_object_get_literal_utf8(const json_t *object, const utf8_t *literal, size_t len) {
+  int err;
+
+  json_t *key;
+  err = json_create_string_utf8(literal, len, &key);
+  if (err < 0) return NULL;
+
+  json_t *value = json_object_get(object, key);
+
+  json_deref(key);
+
+  return value;
+}
+
+static inline json_t *
+json_object_get_literal_utf16le(const json_t *object, const utf16_t *literal, size_t len) {
+  int err;
+
+  json_t *key;
+  err = json_create_string_utf16le(literal, len, &key);
+  if (err < 0) return NULL;
+
+  json_t *value = json_object_get(object, key);
+
+  json_deref(key);
+
+  return value;
+}
+
 int
 json_object_set(json_t *object, json_t *key, json_t *value);
 
+static inline int
+json_object_set_literal_utf8(json_t *object, const utf8_t *literal, size_t len, json_t *value) {
+  int err;
+
+  json_t *key;
+  err = json_create_string_utf8(literal, len, &key);
+  if (err < 0) return -1;
+
+  err = json_object_set(object, key, value);
+
+  json_deref(key);
+
+  return err;
+}
+
+static inline int
+json_object_set_literal_utf16le(json_t *object, const utf16_t *literal, size_t len, json_t *value) {
+  int err;
+
+  json_t *key;
+  err = json_create_string_utf16le(literal, len, &key);
+  if (err < 0) return -1;
+
+  err = json_object_set(object, key, value);
+
+  json_deref(key);
+
+  return err;
+}
+
 int
 json_object_delete(json_t *object, const json_t *key);
+
+static inline int
+json_object_delete_literal_utf8(json_t *object, const utf8_t *literal, size_t len) {
+  int err;
+
+  json_t *key;
+  err = json_create_string_utf8(literal, len, &key);
+  if (err < 0) return -1;
+
+  err = json_object_delete(object, key);
+
+  json_deref(key);
+
+  return err;
+}
+
+static inline int
+json_object_delete_literal_utf16le(json_t *object, const utf16_t *literal, size_t len) {
+  int err;
+
+  json_t *key;
+  err = json_create_string_utf16le(literal, len, &key);
+  if (err < 0) return -1;
+
+  err = json_object_delete(object, key);
+
+  json_deref(key);
+
+  return err;
+}
 
 int
 json_encode_utf8(const json_t *value, utf8_t **result);

@@ -34,13 +34,6 @@ struct json_s {
   json_type_t type;
 };
 
-struct json_scope_s {
-  json_scope_t *parent;
-  size_t len;
-  size_t capacity;
-  json_t **values;
-};
-
 struct json_null_s {
   json_type_t type;
 };
@@ -358,59 +351,6 @@ json_deref(json_t *value) {
   return refs;
 }
 
-thread_local static json_scope_t *json__scope = NULL;
-
-int
-json_open_scope(json_scope_t **result) {
-  json_scope_t *scope = malloc(sizeof(json_scope_t));
-
-  if (scope == NULL) return -1;
-
-  scope->parent = json__scope;
-  scope->len = 0;
-  scope->capacity = 0;
-  scope->values = NULL;
-
-  *result = json__scope = scope;
-
-  return 0;
-}
-
-int
-json_close_scope(json_scope_t *scope) {
-  assert(json__scope == scope);
-
-  for (size_t i = 0, n = scope->len; i < n; i++) {
-    json_deref(scope->values[i]);
-  }
-
-  json__scope = scope->parent;
-
-  free(scope->values);
-  free(scope);
-
-  return 0;
-}
-
-static inline void
-json__attach_to_scope(json_t *value) {
-  json_scope_t *scope = json__scope;
-
-  if (scope == NULL) return;
-
-  if (scope->len >= scope->capacity) {
-    if (scope->capacity) scope->capacity *= 2;
-    else scope->capacity = 4;
-
-    json_t **values = realloc(scope->values, sizeof(json_t *) * scope->capacity);
-    assert(values);
-
-    scope->values = values;
-  }
-
-  scope->values[scope->len++] = value;
-}
-
 static const json_null_t json__null = {
   .type = json_null,
 };
@@ -446,15 +386,15 @@ json_boolean_value(const json_t *boolean) {
 
 int
 json_create_number(double value, json_t **result) {
-  json_number_t *number = malloc(sizeof(json_number_t));
+  json_number_t *num = malloc(sizeof(json_number_t));
 
-  if (number == NULL) return -1;
+  if (num == NULL) return -1;
 
-  number->type = json_number;
-  number->refs = 1;
-  number->value = value;
+  num->type = json_number;
+  num->refs = 1;
+  num->value = value;
 
-  json__attach_to_scope(*result = (json_t *) number);
+  *result = (json_t *) num;
 
   return 0;
 }
@@ -482,7 +422,7 @@ json_create_string_utf8(const utf8_t *value, size_t len, json_t **result) {
 
   memcpy(str->value.utf8, value, len * sizeof(utf8_t));
 
-  json__attach_to_scope(*result = (json_t *) str);
+  *result = (json_t *) str;
 
   return 0;
 }
@@ -505,7 +445,7 @@ json_create_string_utf16le(const utf16_t *value, size_t len, json_t **result) {
 
   memcpy(str->value.utf8, value, len * sizeof(utf16_t));
 
-  json__attach_to_scope(*result = (json_t *) str);
+  *result = (json_t *) str;
 
   return 0;
 }
@@ -534,7 +474,7 @@ json_create_array(size_t len, json_t **result) {
     arr->values[i] = (json_t *) &json__null;
   }
 
-  json__attach_to_scope(*result = (json_t *) arr);
+  *result = (json_t *) arr;
 
   return 0;
 }
@@ -550,7 +490,11 @@ json_array_get(const json_t *array, size_t index) {
 
   if (index >= arr->len) return NULL;
 
-  return arr->values[index];
+  json_t *value = arr->values[index];
+
+  json_ref(value);
+
+  return value;
 }
 
 int
@@ -597,7 +541,7 @@ json_create_object(size_t len, json_t **result) {
     };
   }
 
-  json__attach_to_scope(*result = (json_t *) obj);
+  *result = (json_t *) obj;
 
   return 0;
 }
@@ -617,7 +561,11 @@ json_object_get(const json_t *object, const json_t *key) {
     json_property_t *property = &obj->properties[i];
 
     if (json__property_matches(property, key)) {
-      return property->value;
+      json_t *value = property->value;
+
+      json_ref(value);
+
+      return value;
     }
   }
 
@@ -1192,19 +1140,25 @@ json__decode_utf8_number(json_utf8_decoder_t *dec, json_t **result) {
     }
   }
 
-  if (dec->value == start) return -1;
+  size_t len = dec->value - start;
+
+  if (len == 0 || len > 64) return -1;
 
   if (result == NULL) return 0;
 
-  json_number_t *number = malloc(sizeof(json_number_t));
+  char value[65];
+  value[len] = '\0';
+  memcpy(value, start, len);
 
-  if (number == NULL) return -1;
+  json_number_t *num = malloc(sizeof(json_number_t));
 
-  number->type = json_number;
-  number->refs = 1;
-  number->value = strtod((const char *) start, NULL);
+  if (num == NULL) return -1;
 
-  *result = (json_t *) number;
+  num->type = json_number;
+  num->refs = 1;
+  num->value = strtod(value, NULL);
+
+  *result = (json_t *) num;
 
   return 0;
 }
@@ -1553,8 +1507,6 @@ json_decode_utf8(const utf8_t *buffer, size_t len, json_t **result) {
 
     return -1;
   }
-
-  json__attach_to_scope(value);
 
   *result = value;
 
