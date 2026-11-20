@@ -1502,6 +1502,8 @@ json_decode_utf8(const utf8_t *buffer, size_t len, json_t **result) {
   err = json__decode_utf8(&dec, &value);
   if (err < 0) return err;
 
+  json__utf8_decoder_skip_whitespace(&dec);
+
   if (dec.value != dec.end) {
     json_deref(value);
 
