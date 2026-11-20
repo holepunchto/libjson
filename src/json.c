@@ -1164,7 +1164,61 @@ json__decode_utf8_number(json_utf8_decoder_t *dec, json_t **result) {
 }
 
 static inline int
+json__decode_utf8_hex(const utf8_t *value, utf32_t *result) {
+  utf32_t code = 0;
+
+  for (int i = 0; i < 4; i++) {
+    utf8_t c = value[i];
+
+    code <<= 4;
+
+    if (c >= '0' && c <= '9') code |= (utf32_t) (c - '0');
+    else if (c >= 'a' && c <= 'f') code |= (utf32_t) (c - 'a' + 10);
+    else if (c >= 'A' && c <= 'F') code |= (utf32_t) (c - 'A' + 10);
+    else return -1;
+  }
+
+  *result = code;
+
+  return 0;
+}
+
+static inline int
+json__decode_utf8_escape(json_utf8_decoder_t *dec, utf32_t *result) {
+  int err;
+
+  if (dec->end - dec->value < 4) return -1;
+
+  utf32_t code;
+  err = json__decode_utf8_hex(dec->value, &code);
+  if (err < 0) return err;
+
+  dec->value += 4;
+
+  if (code >= 0xd800 && code <= 0xdbff && dec->end - dec->value >= 6 && dec->value[0] == '\\' && dec->value[1] == 'u') {
+    utf32_t low;
+    err = json__decode_utf8_hex(dec->value + 2, &low);
+
+    if (err == 0 && low >= 0xdc00 && low <= 0xdfff) {
+      dec->value += 6;
+
+      code = 0x10000 + ((code - 0xd800) << 10) + (low - 0xdc00);
+    }
+  }
+
+  // A surrogate that pairs with nothing has no scalar value, and UTF-8 holds
+  // scalar values only.
+  if (code >= 0xd800 && code <= 0xdfff) code = 0xfffd;
+
+  *result = code;
+
+  return 0;
+}
+
+static inline int
 json__decode_utf8_string(json_utf8_decoder_t *dec, json_t **result) {
+  int err;
+
   const utf8_t *start = ++dec->value;
 
   size_t len = 0;
@@ -1184,11 +1238,13 @@ json__decode_utf8_string(json_utf8_decoder_t *dec, json_t **result) {
       if (e == '\"' || e == '\\' || e == '/' || e == 'b' || e == 'f' || e == 'n' || e == 'r' || e == 't') {
         ;
       } else if (e == 'u') {
-        if (dec->end - dec->value < 4) return -1;
+        utf32_t code;
+        err = json__decode_utf8_escape(dec, &code);
+        if (err < 0) return err;
 
-        dec->value += 4;
+        len += utf8_length_from_utf32(&code, 1);
 
-        return -1; // TODO Handle conversion
+        continue;
       } else {
         return -1;
       }
@@ -1236,9 +1292,12 @@ json__decode_utf8_string(json_utf8_decoder_t *dec, json_t **result) {
       } else if (e == 't') {
         c = '\t';
       } else if (e == 'u') {
-        dec->value += 4;
+        utf32_t code;
+        json__decode_utf8_escape(dec, &code);
 
-        // TODO Handle conversion
+        i += utf32_convert_to_utf8(&code, 1, &str->value.utf8[i]);
+
+        continue;
       }
     }
 
