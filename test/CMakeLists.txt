@@ -8,6 +8,7 @@ list(APPEND tests
   decode-utf8-string
   decode-utf8-string-empty
   decode-utf8-string-escape
+  decode-utf8-string-escape-unicode
   decode-utf8-true
 )
 
