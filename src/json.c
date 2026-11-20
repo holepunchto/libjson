@@ -583,6 +583,28 @@ json__property_set(json_property_t *property, json_t *key, json_t *value) {
   property->value = value;
 }
 
+json_t *
+json_object_key(const json_t *object, size_t index) {
+  const json_object_t *obj = json_to(object, object);
+
+  if (index >= obj->len) return NULL;
+
+  json_t *key = obj->properties[index].key;
+
+  return key->type == json_null ? NULL : key;
+}
+
+json_t *
+json_object_value(const json_t *object, size_t index) {
+  const json_object_t *obj = json_to(object, object);
+
+  if (index >= obj->len) return NULL;
+
+  if (obj->properties[index].key->type == json_null) return NULL;
+
+  return obj->properties[index].value;
+}
+
 int
 json_object_set(json_t *object, json_t *key, json_t *value) {
   json_object_t *obj = json_to(object, object);
