@@ -11,6 +11,7 @@ list(APPEND tests
   decode-utf8-string-escape
   decode-utf8-string-escape-unicode
   decode-utf8-true
+  decode-utf8-whitespace
 )
 
 foreach(test IN LISTS tests)
