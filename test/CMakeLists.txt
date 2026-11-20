@@ -5,6 +5,7 @@ list(APPEND tests
   decode-utf8-null
   decode-utf8-object
   decode-utf8-object-empty
+  decode-utf8-object-keys
   decode-utf8-string
   decode-utf8-string-empty
   decode-utf8-string-escape

@@ -116,6 +116,12 @@ json_object_size(const json_t *object);
 json_t *
 json_object_get(const json_t *object, const json_t *key);
 
+json_t *
+json_object_key(const json_t *object, size_t index);
+
+json_t *
+json_object_value(const json_t *object, size_t index);
+
 static inline json_t *
 json_object_get_literal_utf8(const json_t *object, const utf8_t *literal, size_t len) {
   int err;
